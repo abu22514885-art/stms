@@ -1,6 +1,7 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -20,9 +21,6 @@ builder.Services.AddScoped<SessionService>();
 builder.Services.AddScoped<PaymentService>();
 builder.Services.AddScoped<SaleReader>();
 builder.Services.AddScoped<SettingsService>();
-builder.Services.AddScoped<WebPushNotificationService>();
-builder.Services.AddHttpClient();
-builder.Services.AddSingleton<ProofImageStorageService>();
 builder.Services.AddScoped<ReceiptPdfService>();
 builder.Services.AddScoped<StatsService>();
 builder.Services.AddScoped<ReportService>();
@@ -49,8 +47,20 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 builder.Services.AddAuthorization();
 
+// Websites allowed to call the API. Local default below; on the server set Cors__Origins to the Netlify address
+// (several addresses can be separated with commas, no trailing slash).
+var corsOrigins = (cfg["Cors:Origins"] ?? "http://localhost:4200")
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 builder.Services.AddCors(o => o.AddPolicy("web", p =>
-    p.WithOrigins("http://localhost:4200").AllowAnyHeader().AllowAnyMethod()));
+    p.WithOrigins(corsOrigins).AllowAnyHeader().AllowAnyMethod()));
+
+// Behind Render's proxy: use the visitor's real IP address (needed by the rate limiter)
+builder.Services.Configure<ForwardedHeadersOptions>(o =>
+{
+    o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    o.KnownNetworks.Clear();
+    o.KnownProxies.Clear();
+});
 
 builder.Services.AddControllers();
 
@@ -98,6 +108,7 @@ using (var scope = app.Services.CreateScope())
     await DbSeeder.SeedAdminAsync(db, cfg);
 }
 
+app.UseForwardedHeaders();
 app.UseCors("web");
 app.UseAuthentication();
 app.UseRateLimiter();

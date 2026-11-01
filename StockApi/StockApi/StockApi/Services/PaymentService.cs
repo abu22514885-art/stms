@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using StockApi.Data;
 
@@ -6,8 +7,19 @@ namespace StockApi.Services;
 public record PaymentRequest(int PaymentMethodId, int? PaymentProviderId,
     string? TransactionRef, string? ReceiptImagePath, decimal Amount);
 
-public class PaymentService(AppDbContext db, ProofImageStorageService proofStorage)
+public class PaymentService(AppDbContext db, IWebHostEnvironment env)
 {
+    // Screenshots are saved by UploadsController as payment-proofs/<32 hex>.<jpg|png|webp>
+    public static readonly Regex ProofPath =
+        new(@"^payment-proofs/[0-9a-f]{32}\.(jpg|png|webp)$", RegexOptions.Compiled);
+
+    // On a server, set UPLOADS_PATH to a persistent disk folder (for example /data/uploads)
+    public string UploadsRoot => Environment.GetEnvironmentVariable("UPLOADS_PATH")
+        ?? Path.Combine(env.ContentRootPath, "uploads");
+
+    public string ProofFullPath(string relative) =>
+        Path.Combine(UploadsRoot, relative.Replace('/', Path.DirectorySeparatorChar));
+
     // Validates payment lines and turns them into Payment rows (SaleId is set by the caller).
     // Cash: no extras. Mobile banking / wallet: provider + transaction reference + screenshot.
     public async Task<(List<Payment>? Payments, string? Error)> BuildAsync(
@@ -44,7 +56,7 @@ public class PaymentService(AppDbContext db, ProofImageStorageService proofStora
                 if (txRef.Length > 100) return (null, "Transaction reference ID is too long.");
 
                 var image = r.ReceiptImagePath?.Trim();
-                if (string.IsNullOrEmpty(image) || !await proofStorage.ExistsAsync(image))
+                if (string.IsNullOrEmpty(image) || !ProofPath.IsMatch(image) || !File.Exists(ProofFullPath(image)))
                     return (null, "Upload the receipt screenshot for this payment.");
 
                 if (!refsInRequest.Add($"{provider.Id}:{txRef}") || !imagesInRequest.Add(image))
