@@ -1,0 +1,15 @@
+﻿# .NET
+bin/
+obj/
+.vs/
+*.user
+appsettings.json
+uploads/
+
+# Angular
+node_modules/
+dist/
+.angular/
+
+# OS
+Thumbs.db

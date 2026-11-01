@@ -1,0 +1,209 @@
+@host = http://localhost:5000
+@adminToken = PASTE_ADMIN_TOKEN
+@salesToken = PASTE_SALESPERSON_TOKEN
+
+############ ACCOUNTS ############
+
+### 1. Admin login -> copy "token" into @adminToken
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "username": "admin", "password": "ChangeMe123!" }
+
+### 2. Salesperson asks for an account (Pending)
+POST {{host}}/api/auth/register
+Content-Type: application/json
+
+{ "fullName": "Abel Tesfaye", "username": "abel", "password": "abel123" }
+
+### 3. Admin: pending requests, then approve (replace the id)
+GET {{host}}/api/users?status=Pending
+Authorization: Bearer {{adminToken}}
+
+###
+POST {{host}}/api/users/PASTE_USER_ID/approve
+Authorization: Bearer {{adminToken}}
+
+### 4. Salesperson login -> copy "token" into @salesToken
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "username": "abel", "password": "abel123" }
+
+############ SETUP BY ADMIN ############
+
+### 5. Company details printed on receipts
+PUT {{host}}/api/settings/company
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{ "companyName": "My Shop PLC", "address": "Addis Ababa", "phone": "0911000000", "tin": "0012345678" }
+
+### 6. Add banks / wallets (PaymentMethodId 2 = Mobile Banking, 3 = Wallet)
+POST {{host}}/api/payment-methods/providers
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{ "paymentMethodId": 2, "name": "CBE" }
+
+###
+POST {{host}}/api/payment-methods/providers
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{ "paymentMethodId": 3, "name": "telebirr" }
+
+### 7. Add a product (quantity 100 = stocked amount)
+POST {{host}}/api/products
+Authorization: Bearer {{salesToken}}
+Content-Type: application/json
+
+{ "sku": "SUG-001", "name": "Sugar 1kg", "costPrice": 80, "price": 100, "quantity": 100 }
+
+### 8. Product list (copy a product id)
+GET {{host}}/api/products
+Authorization: Bearer {{salesToken}}
+
+### 9. Payment methods with their providers (copy the ids)
+GET {{host}}/api/payment-methods
+Authorization: Bearer {{salesToken}}
+
+############ SELLING ############
+
+### 10. Cash sale WITHOUT VAT (2 x 100 = 200). paymentMethodId 1 = Cash
+POST {{host}}/api/sales
+Authorization: Bearer {{salesToken}}
+Content-Type: application/json
+
+{
+  "items": [ { "productId": "PASTE_PRODUCT_ID", "quantity": 2 } ],
+  "wantsReceipt": false,
+  "isLoan": false,
+  "payments": [ { "paymentMethodId": 1, "amount": 200 } ]
+}
+
+### 11. Cash sale WITH 15% VAT (customer wants a receipt: 2 x 115 = 230)
+POST {{host}}/api/sales
+Authorization: Bearer {{salesToken}}
+Content-Type: application/json
+
+{
+  "items": [ { "productId": "PASTE_PRODUCT_ID", "quantity": 2 } ],
+  "wantsReceipt": true,
+  "isLoan": false,
+  "payments": [ { "paymentMethodId": 1, "amount": 230 } ]
+}
+
+### 12a. Upload a payment screenshot (put a real proof.jpg next to this file)
+POST {{host}}/api/uploads/payment-proof
+Authorization: Bearer {{salesToken}}
+Content-Type: multipart/form-data; boundary=XBOUNDARY
+
+--XBOUNDARY
+Content-Disposition: form-data; name="file"; filename="proof.jpg"
+Content-Type: image/jpeg
+
+< ./proof.jpg
+--XBOUNDARY--
+
+### 12b. Bank transfer sale (use the "path" from 12a, the CBE provider id from step 9)
+POST {{host}}/api/sales
+Authorization: Bearer {{salesToken}}
+Content-Type: application/json
+
+{
+  "items": [ { "productId": "PASTE_PRODUCT_ID", "quantity": 1 } ],
+  "wantsReceipt": false,
+  "isLoan": false,
+  "payments": [ {
+    "paymentMethodId": 2, "paymentProviderId": 1,
+    "transactionRef": "FT26300ABC", "receiptImagePath": "payment-proofs/PASTE.jpg", "amount": 100
+  } ]
+}
+
+### 13. Loan sale (customer takes 3 on credit, pays nothing now)
+POST {{host}}/api/sales
+Authorization: Bearer {{salesToken}}
+Content-Type: application/json
+
+{
+  "items": [ { "productId": "PASTE_PRODUCT_ID", "quantity": 3 } ],
+  "wantsReceipt": false,
+  "isLoan": true,
+  "customer": { "fullName": "Kebede Alemu", "phone": "+251911223344" }
+}
+
+### 14. Download the receipt PDF (sale id from the sale response)
+GET {{host}}/api/sales/PASTE_SALE_ID/receipt
+Authorization: Bearer {{salesToken}}
+
+############ LOANS ############
+
+### 15. Open loans (search by name or phone)
+GET {{host}}/api/loans?status=open&search=kebede
+Authorization: Bearer {{salesToken}}
+
+### 16. Customer pays part of the loan in cash
+POST {{host}}/api/loans/PASTE_LOAN_SALE_ID/payments
+Authorization: Bearer {{salesToken}}
+Content-Type: application/json
+
+{ "paymentMethodId": 1, "amount": 100 }
+
+############ DAILY WORK ############
+
+### 17. Salesperson dashboard (no revenue in it)
+GET {{host}}/api/dashboard/salesperson
+Authorization: Bearer {{salesToken}}
+
+### 18. Check out (ends the day's sales)
+POST {{host}}/api/sessions/checkout
+Authorization: Bearer {{salesToken}}
+
+### 19. Selling after check-out -> 409 (repeat request 10)
+
+### 20. Admin: sessions of today, then reopen one
+GET {{host}}/api/sessions
+Authorization: Bearer {{adminToken}}
+
+###
+POST {{host}}/api/sessions/PASTE_SESSION_ID/reopen
+Authorization: Bearer {{adminToken}}
+
+############ ADMIN VIEWS ############
+
+### 21. All sales with totals
+GET {{host}}/api/sales
+Authorization: Bearer {{adminToken}}
+
+### 22. Low stock bell
+GET {{host}}/api/notifications/low-stock
+Authorization: Bearer {{adminToken}}
+
+### 23. Admin dashboard (period = day | week | month | year)
+GET {{host}}/api/dashboard/admin?period=month
+Authorization: Bearer {{adminToken}}
+
+############ REPORTS (admin) ############
+# Add &format=pdf to download the PDF. Without it you get JSON for the tables on screen.
+# from / to are dates like 2026-10-01 (default: 1st of this month until today).
+
+### 24. Sales report
+GET {{host}}/api/reports/sales?from=2026-10-01&to=2026-10-31
+Authorization: Bearer {{adminToken}}
+
+###
+GET {{host}}/api/reports/sales?from=2026-10-01&to=2026-10-31&format=pdf
+Authorization: Bearer {{adminToken}}
+
+### 25. Stock report
+GET {{host}}/api/reports/stock?format=pdf
+Authorization: Bearer {{adminToken}}
+
+### 26. Loans report (status = open | paid | all)
+GET {{host}}/api/reports/loans?status=open&format=pdf
+Authorization: Bearer {{adminToken}}
+
+### 27. Company performance report
+GET {{host}}/api/reports/performance?from=2026-01-01&to=2026-10-31&format=pdf
+Authorization: Bearer {{adminToken}}
