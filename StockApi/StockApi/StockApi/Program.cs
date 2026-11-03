@@ -25,6 +25,9 @@ builder.Services.AddScoped<ReceiptPdfService>();
 builder.Services.AddScoped<StatsService>();
 builder.Services.AddScoped<ReportService>();
 builder.Services.AddScoped<ReportPdfService>();
+builder.Services.AddScoped<WebPushNotificationService>();
+builder.Services.AddScoped<ProofImageStorageService>();
+builder.Services.AddHttpClient();
 
 QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 
@@ -114,4 +117,4 @@ app.UseAuthentication();
 app.UseRateLimiter();
 app.UseAuthorization();
 app.MapControllers();
-app.Run();
+await app.RunAsync();

@@ -39,6 +39,15 @@ public class ProductsController(AppDbContext db, VatService vat) : ControllerBas
     private IActionResult Duplicate() =>
         Conflict(new { message = "A product with this SKU or name already exists." });
 
+    private static string GenerateSku(string name)
+    {
+        var initials = string.Concat(name.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Select(word => word.FirstOrDefault(char.IsLetterOrDigit)))
+            .ToUpperInvariant();
+
+        return $"{(string.IsNullOrEmpty(initials) ? "P" : initials)}{Random.Shared.Next(100, 1000)}";
+    }
+
     private Task<bool> Exists(string sku, string name, Guid except)
     {
         var s = sku.ToLower();
@@ -81,8 +90,8 @@ public class ProductsController(AppDbContext db, VatService vat) : ControllerBas
         var error = Validate(null, r.Name, r.Price, r.CostPrice, r.Quantity, requireSku: false);
         if (error != null) return BadRequest(new { message = error });
 
-        var sku = $"STMS-{Guid.NewGuid():N}";
         var name = r.Name.Trim();
+        var sku = GenerateSku(name);
         if (await Exists(sku, name, Guid.Empty)) return Duplicate();
 
         var (price, vatAmount, withVat) = VatService.Compute(r.Price, await vat.GetRateAsync());
