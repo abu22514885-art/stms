@@ -11,8 +11,23 @@ using StockApi.Services;
 var builder = WebApplication.CreateBuilder(args);
 var cfg = builder.Configuration;
 
+// Render gives the database address as postgres://user:password@host/db. Npgsql needs key=value text, so convert it.
+// A normal "Host=...;Database=..." string is used as it is.
+static string NormalizeConnection(string? raw)
+{
+    if (string.IsNullOrWhiteSpace(raw)) return "";
+    // Pasted values often carry spaces, line breaks or surrounding quotes
+    raw = raw.Trim().Trim('"', '\'').Trim();
+    if (!raw.StartsWith("postgres://") && !raw.StartsWith("postgresql://")) return raw;
+    var u = new Uri(raw);
+    var user = u.UserInfo.Split(':', 2);
+    return $"Host={u.Host};Port={(u.Port > 0 ? u.Port : 5432)};Database={u.AbsolutePath.TrimStart('/')};" +
+           $"Username={Uri.UnescapeDataString(user[0])};Password={Uri.UnescapeDataString(user.Length > 1 ? user[1] : "")};" +
+           "SSL Mode=Prefer;Trust Server Certificate=true";
+}
+
 builder.Services.AddDbContext<AppDbContext>(o =>
-    o.UseNpgsql(cfg.GetConnectionString("Default")).UseSnakeCaseNamingConvention());
+    o.UseNpgsql(NormalizeConnection(cfg.GetConnectionString("Default"))).UseSnakeCaseNamingConvention());
 
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<VatService>();
@@ -25,9 +40,6 @@ builder.Services.AddScoped<ReceiptPdfService>();
 builder.Services.AddScoped<StatsService>();
 builder.Services.AddScoped<ReportService>();
 builder.Services.AddScoped<ReportPdfService>();
-builder.Services.AddScoped<WebPushNotificationService>();
-builder.Services.AddScoped<ProofImageStorageService>();
-builder.Services.AddHttpClient();
 
 QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 
@@ -82,7 +94,9 @@ static string ClientKey(HttpContext c) =>
 
 static FixedWindowRateLimiterOptions Window(int permits) => new()
 {
-    PermitLimit = permits, Window = TimeSpan.FromMinutes(1), QueueLimit = 0,
+    PermitLimit = permits,
+    Window = TimeSpan.FromMinutes(1),
+    QueueLimit = 0,
     AutoReplenishment = true
 };
 
@@ -117,4 +131,4 @@ app.UseAuthentication();
 app.UseRateLimiter();
 app.UseAuthorization();
 app.MapControllers();
-await app.RunAsync();
+app.Run();
