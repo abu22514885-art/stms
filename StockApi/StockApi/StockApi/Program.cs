@@ -131,4 +131,7 @@ app.UseAuthentication();
 app.UseRateLimiter();
 app.UseAuthorization();
 app.MapControllers();
+
+// For uptime checks (keeps a free host awake). Does not touch the database.
+app.MapGet("/health", () => Results.Text("ok")).DisableRateLimiting();
 app.Run();
