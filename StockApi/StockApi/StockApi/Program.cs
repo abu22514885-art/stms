@@ -5,29 +5,49 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Npgsql;
 using StockApi.Data;
 using StockApi.Services;
 
-var builder = WebApplication.CreateBuilder(args);
-var cfg = builder.Configuration;
-
-// Render gives the database address as postgres://user:password@host/db. Npgsql needs key=value text, so convert it.
-// A normal "Host=...;Database=..." string is used as it is.
-static string NormalizeConnection(string? raw)
+static string ResolveDatabaseConnectionString(IConfiguration configuration)
 {
-    if (string.IsNullOrWhiteSpace(raw)) return "";
-    // Pasted values often carry spaces, line breaks or surrounding quotes
-    raw = raw.Trim().Trim('"', '\'').Trim();
-    if (!raw.StartsWith("postgres://") && !raw.StartsWith("postgresql://")) return raw;
-    var u = new Uri(raw);
-    var user = u.UserInfo.Split(':', 2);
-    return $"Host={u.Host};Port={(u.Port > 0 ? u.Port : 5432)};Database={u.AbsolutePath.TrimStart('/')};" +
-           $"Username={Uri.UnescapeDataString(user[0])};Password={Uri.UnescapeDataString(user.Length > 1 ? user[1] : "")};" +
-           "SSL Mode=Prefer;Trust Server Certificate=true";
+    var explicitConnectionString = Environment.GetEnvironmentVariable("ConnectionStrings__Default");
+    if (!string.IsNullOrWhiteSpace(explicitConnectionString)) return explicitConnectionString;
+
+    var databaseUrl = configuration["DATABASE_URL"];
+    if (!string.IsNullOrWhiteSpace(databaseUrl))
+    {
+        if (!Uri.TryCreate(databaseUrl, UriKind.Absolute, out var uri) ||
+            (uri.Scheme != "postgres" && uri.Scheme != "postgresql"))
+            throw new InvalidOperationException("DATABASE_URL must be a valid PostgreSQL connection URL.");
+
+        var credentials = uri.UserInfo.Split(':', 2);
+        if (credentials.Length != 2 || string.IsNullOrWhiteSpace(uri.AbsolutePath.Trim('/')))
+            throw new InvalidOperationException("DATABASE_URL must include a database name and credentials.");
+
+        return new NpgsqlConnectionStringBuilder
+        {
+            Host = uri.Host,
+            Port = uri.IsDefaultPort ? 5432 : uri.Port,
+            Database = Uri.UnescapeDataString(uri.AbsolutePath.Trim('/')),
+            Username = Uri.UnescapeDataString(credentials[0]),
+            Password = Uri.UnescapeDataString(credentials[1]),
+            SslMode = SslMode.Require,
+            Timeout = 15,
+            CommandTimeout = 30
+        }.ConnectionString;
+    }
+
+    return configuration.GetConnectionString("Default")
+        ?? throw new InvalidOperationException("Set ConnectionStrings__Default or DATABASE_URL for the database connection.");
 }
 
+var builder = WebApplication.CreateBuilder(args);
+var cfg = builder.Configuration;
+var connectionString = ResolveDatabaseConnectionString(cfg);
+
 builder.Services.AddDbContext<AppDbContext>(o =>
-    o.UseNpgsql(NormalizeConnection(cfg.GetConnectionString("Default"))).UseSnakeCaseNamingConvention());
+    o.UseNpgsql(connectionString).UseSnakeCaseNamingConvention());
 
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<VatService>();
@@ -40,6 +60,7 @@ builder.Services.AddScoped<ReceiptPdfService>();
 builder.Services.AddScoped<StatsService>();
 builder.Services.AddScoped<ReportService>();
 builder.Services.AddScoped<ReportPdfService>();
+builder.Services.AddScoped<WebPushNotificationService>();
 
 QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 
@@ -65,10 +86,7 @@ builder.Services.AddAuthorization();
 // Websites allowed to call the API. Local default below; on the server set Cors__Origins to the Netlify address
 // (several addresses can be separated with commas, no trailing slash).
 var corsOrigins = (cfg["Cors:Origins"] ?? "http://localhost:4200")
-    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-    .Select(x => x.Trim('"', '\'', ' ').TrimEnd('/'))   // ignore quotes and a trailing slash
-    .Where(x => x.Length > 0)
-    .ToArray();
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 builder.Services.AddCors(o => o.AddPolicy("web", p =>
     p.WithOrigins(corsOrigins).AllowAnyHeader().AllowAnyMethod()));
 
@@ -97,9 +115,7 @@ static string ClientKey(HttpContext c) =>
 
 static FixedWindowRateLimiterOptions Window(int permits) => new()
 {
-    PermitLimit = permits,
-    Window = TimeSpan.FromMinutes(1),
-    QueueLimit = 0,
+    PermitLimit = permits, Window = TimeSpan.FromMinutes(1), QueueLimit = 0,
     AutoReplenishment = true
 };
 
@@ -134,7 +150,4 @@ app.UseAuthentication();
 app.UseRateLimiter();
 app.UseAuthorization();
 app.MapControllers();
-
-// For uptime checks (keeps a free host awake). Does not touch the database.
-app.MapMethods("/health", new[] { "GET", "HEAD" }, () => Results.Text("ok")).DisableRateLimiting();
-app.Run();
+await app.RunAsync();
