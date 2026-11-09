@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StockApi.Data;
@@ -8,9 +9,10 @@ namespace StockApi.Controllers;
 [ApiController]
 [Route("api/uploads")]
 [Authorize]
-public class UploadsController(ProofImageStorageService proofStorage) : ControllerBase
+public class UploadsController(PaymentService payments) : ControllerBase
 {
     private const long MaxBytes = 5 * 1024 * 1024;
+    private static readonly Regex FileName = new(@"^[0-9a-f]{32}\.(jpg|png|webp)$", RegexOptions.Compiled);
 
     // Step 1 of an e-payment: upload the screenshot, then send the returned "path" in the payment.
     [HttpPost("payment-proof")]
@@ -33,18 +35,33 @@ public class UploadsController(ProofImageStorageService proofStorage) : Controll
                  && h[8] == (byte)'W' && h[9] == (byte)'E' && h[10] == (byte)'B' && h[11] == (byte)'P') ext = "webp";
         if (ext is null) return BadRequest(new { message = "Only JPG, PNG or WEBP images are allowed." });
 
-        var relative = await proofStorage.SaveAsync(file, ext);
-        return Ok(new { path = relative });
+        var name = $"{Guid.NewGuid():N}.{ext}";
+        var relative = $"payment-proofs/{name}";
+        try
+        {
+            var full = payments.ProofFullPath(relative);
+            Directory.CreateDirectory(Path.GetDirectoryName(full)!);
+            await using (var fs = System.IO.File.Create(full))
+                await file.CopyToAsync(fs);
+            return Ok(new { path = relative });
+        }
+        catch (Exception ex)
+        {
+            // Show the real reason (and keep the CORS headers) instead of a blank 500
+            return StatusCode(500, new { message = "Could not save the image: " + ex.GetType().Name + " - " + ex.Message });
+        }
     }
 
     // Admin views a screenshot: GET api/uploads/payment-proofs/{file}
-    [HttpGet("payment-proofs/{*file}")]
+    [HttpGet("payment-proofs/{file}")]
     [Authorize(Roles = Roles.Admin)]
-    public async Task<IActionResult> Get(string file)
+    public IActionResult Get(string file)
     {
-        var path = $"payment-proofs/{file}";
-        if (!ProofImageStorageService.IsValidPath(path)) return NotFound();
-        var image = await proofStorage.ReadAsync(path);
-        return image is null ? NotFound() : File(image.Value.Content, image.Value.ContentType);
+        if (!FileName.IsMatch(file)) return NotFound();
+        var full = payments.ProofFullPath($"payment-proofs/{file}");
+        if (!System.IO.File.Exists(full)) return NotFound();
+
+        var type = file.EndsWith(".png") ? "image/png" : file.EndsWith(".webp") ? "image/webp" : "image/jpeg";
+        return PhysicalFile(full, type);
     }
 }
