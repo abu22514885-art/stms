@@ -1,12 +1,11 @@
 using Microsoft.EntityFrameworkCore;
+using StockApi.Controllers;
 
 namespace StockApi.Data;
 
 public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
     public DbSet<AppUser> Users => Set<AppUser>();
-    public DbSet<PasswordResetRequest> PasswordResetRequests => Set<PasswordResetRequest>();
-    public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
     public DbSet<Setting> Settings => Set<Setting>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Product> Products => Set<Product>();
@@ -18,6 +17,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Sale> Sales => Set<Sale>();
     public DbSet<SaleItem> SaleItems => Set<SaleItem>();
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<PasswordResetRequest> PasswordResetRequests => Set<PasswordResetRequest>();
+    public DbSet<PasswordResetTicket> PasswordResetTickets => Set<PasswordResetTicket>();
+    public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
