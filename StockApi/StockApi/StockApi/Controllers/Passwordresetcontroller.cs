@@ -20,7 +20,7 @@ public class PasswordResetTicket
     public Guid? ResolvedBy { get; set; }
 }
 
-public record ResetRequestBody(string Username);
+public record ResetRequestBody(string? Username);
 public record SetPasswordBody(string NewPassword);
 
 // "Forgot password": the user asks, the admin sets a temporary password.
@@ -30,6 +30,7 @@ public class PasswordResetController(AppDbContext db) : ControllerBase
 {
     // Public. Always answers the same, so nobody can find out which usernames exist.
     [HttpPost]
+    [HttpPost("~/api/auth/password-reset-request")]   // same action, second address used by the page
     [AllowAnonymous]
     [EnableRateLimiting("auth")]
     public async Task<IActionResult> Submit(ResetRequestBody r)
