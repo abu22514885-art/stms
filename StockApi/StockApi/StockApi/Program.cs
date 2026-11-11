@@ -86,7 +86,10 @@ builder.Services.AddAuthorization();
 // Websites allowed to call the API. Local default below; on the server set Cors__Origins to the Netlify address
 // (several addresses can be separated with commas, no trailing slash).
 var corsOrigins = (cfg["Cors:Origins"] ?? "http://localhost:4200")
-    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+    .Select(x => x.Trim('"', '\'', ' ').TrimEnd('/'))   // ignore quotes and a trailing slash
+    .Where(x => x.Length > 0)
+    .ToArray();
 builder.Services.AddCors(o => o.AddPolicy("web", p =>
     p.WithOrigins(corsOrigins).AllowAnyHeader().AllowAnyMethod()));
 
@@ -115,7 +118,9 @@ static string ClientKey(HttpContext c) =>
 
 static FixedWindowRateLimiterOptions Window(int permits) => new()
 {
-    PermitLimit = permits, Window = TimeSpan.FromMinutes(1), QueueLimit = 0,
+    PermitLimit = permits,
+    Window = TimeSpan.FromMinutes(1),
+    QueueLimit = 0,
     AutoReplenishment = true
 };
 
@@ -149,5 +154,6 @@ app.UseCors("web");
 app.UseAuthentication();
 app.UseRateLimiter();
 app.UseAuthorization();
+app.MapMethods("/health", new[] { "GET", "HEAD" }, () => Results.Text("ok")).DisableRateLimiting();   // for UptimeRobot
 app.MapControllers();
 await app.RunAsync();
