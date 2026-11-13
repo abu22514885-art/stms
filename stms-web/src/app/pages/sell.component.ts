@@ -2,13 +2,12 @@ import { Component, OnInit, ViewChild, computed, inject, signal } from '@angular
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../core/api.service';
-import { PdfService } from '../core/pdf.service';
 import { NotificationService } from '../core/notification.service';
 import { VAT_RATE } from '../core/config';
 import { CreateSaleRequest, CreateSaleResponse, PaymentDraft, PaymentMethod, Product } from '../core/models';
 import { errMsg, r2 } from '../core/util';
 import { PagerComponent } from '../shared/pager.component';
-import { ModalComponent } from '../shared/modal.component';
+import { PaymentSuccessComponent } from '../shared/Payment success.component';
 import { PaymentFormComponent } from '../shared/payment-form.component';
 import { TPipe } from '../core/t.pipe';
 
@@ -17,7 +16,7 @@ interface CartLine { product: Product; qty: number; }
 @Component({
   selector: 'app-sell',
   standalone: true,
-  imports: [TPipe, FormsModule, DecimalPipe, ModalComponent, PaymentFormComponent, PagerComponent],
+  imports: [TPipe, FormsModule, DecimalPipe, PaymentSuccessComponent, PaymentFormComponent, PagerComponent],
   template: `
     <div class="page-head"><h2>{{ 'New sale' | t }}</h2></div>
     @if (error()) { <div class="alert error">{{ error() | t }}</div> }
@@ -51,7 +50,7 @@ interface CartLine { product: Product; qty: number; }
           <div class="cart-line">
             <div class="cl-name">
               <strong>{{ l.product.name }}</strong>
-              <small class="muted">{{ '{n} each' | t:{ n: ((unitPrice(l.product) | number:'1.2-2') ?? '0.00') } }}</small>
+              <small class="muted">{{ '{n} each' | t:{ n: (unitPrice(l.product) | number:'1.2-2') } }}</small>
             </div>
             <div class="qty">
               <button type="button" class="icon-btn" (click)="setQty(l, l.qty - 1)" [aria-label]="'Less' | t">&minus;</button>
@@ -111,22 +110,12 @@ interface CartLine { product: Product; qty: number; }
     </div>
 
     @if (result(); as r) {
-      <app-modal [title]="'Sale complete' | t" [width]="460" (closed)="result.set(null)">
-        <p>{{ 'Invoice' | t }} <strong>{{ r.sale.invoiceNo }}</strong></p>
-        <p class="big-number">{{ r.sale.total | number:'1.2-2' }}</p>
-        @if (r.sale.isLoan) { <p class="muted">{{ 'Loan: {a} still to be paid by {b}.' | t:{ a: ((r.sale.balance | number:'1.2-2') ?? '0.00'), b: (r.sale.customer?.fullName ?? '') } }}</p> }
-        <div class="modal-actions wrap">
-          <button type="button" class="btn primary" (click)="print(r)">{{ 'Print receipt' | t }}</button>
-          <button type="button" class="btn" (click)="download(r)">{{ 'Download PDF' | t }}</button>
-          <button type="button" class="btn ghost" (click)="result.set(null)">{{ 'New sale' | t }}</button>
-        </div>
-      </app-modal>
+      <app-payment-success [sale]="r.sale" [attachmentUrl]="attach()" (closed)="result.set(null); attach.set(null)"></app-payment-success>
     }
   `
 })
 export class SellComponent implements OnInit {
   private api = inject(ApiService);
-  private pdf = inject(PdfService);
   private notes = inject(NotificationService);
 
   readonly vatPercent = VAT_RATE * 100;
@@ -145,6 +134,7 @@ export class SellComponent implements OnInit {
   readonly busy = signal(false);
   readonly loading = signal(true);
   readonly result = signal<CreateSaleResponse | null>(null);
+  readonly attach = signal<string | null>(null);   // the screenshot the salesperson attached, for the receipt
 
   @ViewChild(PaymentFormComponent) payForm?: PaymentFormComponent;
 
@@ -247,6 +237,7 @@ export class SellComponent implements OnInit {
     this.error.set('');
     this.api.createSale(req).subscribe({
       next: r => {
+        this.attach.set(this.payForm?.previewUrl() || null);
         this.result.set(r);
         this.busy.set(false);
         this.resetSale();
@@ -266,13 +257,5 @@ export class SellComponent implements OnInit {
     this.customerPhone.set('');
     this.search.set('');
     this.payForm?.reset();
-  }
-
-  print(r: CreateSaleResponse): void {
-    this.pdf.print(this.api.receiptPdf(r.sale.id), e => this.error.set(errMsg(e)));
-  }
-
-  download(r: CreateSaleResponse): void {
-    this.pdf.download(this.api.receiptPdf(r.sale.id), `${r.sale.invoiceNo}.pdf`, e => this.error.set(errMsg(e)));
   }
 }

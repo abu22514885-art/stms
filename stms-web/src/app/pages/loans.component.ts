@@ -9,6 +9,7 @@ import { errMsg, r2 } from '../core/util';
 import { PagerComponent } from '../shared/pager.component';
 import { ModalComponent } from '../shared/modal.component';
 import { PaymentFormComponent } from '../shared/payment-form.component';
+import { PaymentSuccessComponent } from '../shared/Payment success.component';
 import { TPipe } from '../core/t.pipe';
 import { FdatePipe } from '../core/fdate.pipe';
 
@@ -16,7 +17,7 @@ import { FdatePipe } from '../core/fdate.pipe';
 @Component({
   selector: 'app-loans',
   standalone: true,
-  imports: [TPipe, FdatePipe, DecimalPipe, FormsModule, ModalComponent, PaymentFormComponent, PagerComponent],
+  imports: [TPipe, FdatePipe, DecimalPipe, FormsModule, ModalComponent, PaymentFormComponent, PaymentSuccessComponent, PagerComponent],
   template: `
     <div class="page-head"><h2>{{ 'Loans' | t }}</h2></div>
 
@@ -128,6 +129,10 @@ import { FdatePipe } from '../core/fdate.pipe';
         }
       </app-modal>
     }
+
+    @if (paid(); as p) {
+      <app-payment-success [sale]="p.sale" [paidAmount]="p.amount" [attachmentUrl]="p.attach" (closed)="paid.set(null)"></app-payment-success>
+    }
   `
 })
 export class LoansComponent implements OnInit {
@@ -144,6 +149,7 @@ export class LoansComponent implements OnInit {
   readonly saving = signal(false);
   readonly error = signal('');
   readonly modalError = signal('');
+  readonly paid = signal<{ sale: Sale; amount: number; attach: string | null } | null>(null);   // shows the payment-complete check + receipt
 
   status = 'open';
   search = '';
@@ -194,6 +200,7 @@ export class LoansComponent implements OnInit {
     this.api.payLoan(s.id, this.draft.request).subscribe({
       next: updated => {
         this.saving.set(false);
+        this.paid.set({ sale: updated, amount: this.draft?.request?.amount ?? 0, attach: this.payForm?.previewUrl() || null });
         this.current.set(updated);
         this.draft = null;
         this.payForm?.reset();

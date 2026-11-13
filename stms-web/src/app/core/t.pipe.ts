@@ -4,7 +4,7 @@ import { tr } from './i18n';
 // In a template: 'Save' | t   or   'Page {n}' | t:{ n: 3 }
 @Pipe({ name: 't', standalone: true, pure: false })
 export class TPipe implements PipeTransform {
-  transform(en: string | null | undefined, params?: Record<string, string | number>): string {
+  transform(en: string | null | undefined, params?: Record<string, string | number | null | undefined>): string {
     return en ? tr(en, params) : '';
   }
 }

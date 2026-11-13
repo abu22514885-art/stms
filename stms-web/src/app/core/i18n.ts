@@ -17,8 +17,8 @@ export function setLang(l: Lang): void {
 }
 
 // English text is the key. If there is no Amharic for it, the English shows. {name} gets replaced by params.
-export function tr(en: string, params?: Record<string, string | number>): string {
+export function tr(en: string, params?: Record<string, string | number | null | undefined>): string {
   let s = lang() === 'am' ? (AM[en] ?? en) : en;
-  if (params) for (const k of Object.keys(params)) s = s.split(`{${k}}`).join(String(params[k]));
+  if (params) for (const k of Object.keys(params)) s = s.split(`{${k}}`).join(String(params[k] ?? ''));
   return s;
 }
