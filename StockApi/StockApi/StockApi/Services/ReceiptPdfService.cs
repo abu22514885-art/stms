@@ -8,7 +8,7 @@ namespace StockApi.Services;
 
 // Builds the printable receipt handed to the customer.
 // With VAT (customer wants a receipt) it is a "TAX INVOICE / RECEIPT", otherwise a "SALES SLIP".
-public class ReceiptPdfService(TimeService time)
+public class ReceiptPdfService(TimeService time, IConfiguration cfg)
 {
     private static string Money(decimal v) => v.ToString("N2", CultureInfo.InvariantCulture);
 
@@ -28,10 +28,8 @@ public class ReceiptPdfService(TimeService time)
 
     public byte[] Generate(SaleDto s, CompanyInfo company, decimal vatRatePercent)
     {
-        var inv = CultureInfo.InvariantCulture;
-        var qrText = string.Join("|", "INV", s.InvoiceNo, company.Tin ?? "",
-            s.CreatedAt.ToString("yyyyMMddHHmm", inv),
-            s.Subtotal.ToString("F2", inv), (s.WantsReceipt ? s.VatTotal : 0m).ToString("F2", inv), s.Total.ToString("F2", inv));
+        // The QR opens the public verification page with a signed link (a fake receipt cannot copy it)
+        var qrText = InvoiceLink.Url(cfg, s.InvoiceNo, s.CreatedAt, s.Subtotal, s.VatTotal, s.Total);
         var qrPng = Qr(qrText);
 
         var title = s.WantsReceipt ? "TAX INVOICE / RECEIPT" : "SALES SLIP";
@@ -134,11 +132,11 @@ public class ReceiptPdfService(TimeService time)
                         });
                     }
 
-                    // Invoice QR code (scan to compare the invoice number, TIN, date and amounts)
+                    // Invoice QR code: opens the verification page (genuine or fake)
                     col.Item().AlignCenter().Column(q =>
                     {
                         q.Item().AlignCenter().Width(80).Image(qrPng);
-                        q.Item().AlignCenter().Text("Scan to check this invoice").FontSize(7);
+                        q.Item().AlignCenter().Text("Scan to verify this invoice").FontSize(7);
                     });
                 });
 

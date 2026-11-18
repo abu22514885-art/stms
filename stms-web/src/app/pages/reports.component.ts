@@ -6,7 +6,7 @@ import { ReportDoc } from '../core/models';
 import { errMsg, firstOfMonth, isoDate } from '../core/util';
 import { TPipe } from '../core/t.pipe';
 
-type Kind = 'sales' | 'stock' | 'loans' | 'performance';
+type Kind = 'sales' | 'stock' | 'loans' | 'performance' | 'vat-summary' | 'vat-register';
 
 // Admin reports: see them as tables here, or download/print the PDF.
 @Component({
@@ -82,7 +82,9 @@ export class ReportsComponent implements OnInit {
     { kind: 'sales', label: 'Sales' },
     { kind: 'stock', label: 'Stock' },
     { kind: 'loans', label: 'Loans' },
-    { kind: 'performance', label: 'Performance' }
+    { kind: 'performance', label: 'Performance' },
+    { kind: 'vat-summary', label: 'VAT summary' },
+    { kind: 'vat-register', label: 'VAT register' }
   ];
   readonly limit = 500;
 

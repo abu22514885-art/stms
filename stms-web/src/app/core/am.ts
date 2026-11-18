@@ -60,15 +60,6 @@ export const AM: Record<string, string> = {
   // products
   'Add product': 'ምርት ጨምር', 'Edit product': 'ምርት አርም', 'Search by name or code': 'በስም ወይም በኮድ ፈልግ', 'No products found.': 'ምንም ምርት አልተገኘም።',
   'Code (SKU)': 'ኮድ (SKU)', 'Cost price (what you paid)': 'የግዢ ዋጋ (የከፈሉት)', 'Selling price (before VAT)': 'የመሸጫ ዋጋ (ከተ.እ.ታ በፊት)',
-  'Forgot password?': 'የይለፍ ቃል ረሱ?', 'Reset password': 'የይለፍ ቃል ዳግም ያዘጋጁ',
-  'Choose a new password. An admin must approve the request before it takes effect.': 'አዲስ የይለፍ ቃል ይምረጡ። ከመስራቱ በፊት አስተዳዳሪ ማጽደቅ አለበት።',
-  'New password': 'አዲስ የይለፍ ቃል', 'Confirm new password': 'አዲሱን የይለፍ ቃል ያረጋግጡ',
-  'Send reset request': 'የዳግም ማዘጋጀት ጥያቄ ላክ', 'Sending request...': 'ጥያቄውን በመላክ ላይ...',
-  'Password must be at least 8 characters.': 'የይለፍ ቃሉ ቢያንስ 8 ቁምፊዎች መሆን አለበት።', 'Passwords do not match.': 'የይለፍ ቃሎቹ አይዛመዱም።',
-  'Enter your username.': 'የተጠቃሚ ስምዎን ያስገቡ።',
-  'Password reset requests ({n})': 'የይለፍ ቃል ዳግም ማዘጋጀት ጥያቄዎች ({n})', 'No password reset requests.': 'የይለፍ ቃል ዳግም ማዘጋጀት ጥያቄ የለም።',
-  'Approve reset': 'ዳግም ማዘጋጀቱን አጽድቅ', 'Enable alerts': 'ማሳወቂያዎችን አብራ', 'Alerts on': 'ማሳወቂያዎች በርተዋል',
-  'Assigned automatically on save': 'በሚቀመጥበት ጊዜ በራስ-ሰር ይመደባል', 'Enter the product name.': 'የምርቱን ስም ያስገቡ።',
   'VAT {p}% = {v}, price with VAT = {w}': 'ተ.እ.ታ {p}% = {v}፣ ከተ.እ.ታ ጋር ዋጋ = {w}', 'Quantity in stock': 'በክምችት ያለ ብዛት',
   'Restock': 'ክምችት ጨምር', 'Adjust': 'አስተካክል', 'Adjust stock': 'ክምችት አስተካክል', 'Quantity to add': 'የሚጨመር ብዛት',
   'Change (use a minus for removing, e.g. -3)': 'ለውጥ (ለመቀነስ መቀነስ ምልክት ይጠቀሙ፣ ለምሳሌ -3)',
@@ -108,5 +99,21 @@ export const AM: Record<string, string> = {
 
   // server and network messages
   'Cannot reach the server. Is the API running?': 'አገልጋዩን ማግኘት አልተቻለም። ኤፒአይው እየሰራ ነው?', 'You are not allowed to do this.': 'ይህን ለማድረግ አልተፈቀደልዎትም።',
-  'Something went wrong.': 'ችግር ተከስቷል።', 'Too many requests. Please wait a moment and try again.': 'በጣም ብዙ ጥያቄዎች። እባክዎ ጥቂት ቆይተው እንደገና ይሞክሩ።'
+  'Something went wrong.': 'ችግር ተከስቷል።', 'Too many requests. Please wait a moment and try again.': 'በጣም ብዙ ጥያቄዎች። እባክዎ ጥቂት ቆይተው እንደገና ይሞክሩ።',
+
+  // splash and payment receipt
+  'Skip': 'ዝለል', 'A customer picks a product': 'ደንበኛ ምርት ይመርጣል', 'The sale is made': 'ሽያጩ ይፈጸማል',
+  'Payment received': 'ክፍያ ተቀብሏል', 'Payment complete': 'ክፍያ ተጠናቋል', 'Receipt': 'ደረሰኝ', 'Attachment': 'ማያያዣ',
+
+  // VAT report tabs
+  'VAT summary': 'የተ.እ.ታ ማጠቃለያ', 'VAT register': 'የተ.እ.ታ መዝገብ',
+
+  // invoice QR verification page
+  'Checking this invoice...': 'ደረሰኙን እየፈተሸ ነው...', 'Comparing it with our records': 'ከመዝገባችን ጋር እያነጻጸረ ነው',
+  'Genuine invoice': 'እውነተኛ ደረሰኝ', 'This invoice was issued by the company below.': 'ይህ ደረሰኝ ከታች ባለው ድርጅት የተሰጠ ነው።',
+  'Check that these items and amounts match your paper receipt.': 'እነዚህ ዕቃዎችና መጠኖች ከወረቀት ደረሰኝዎ ጋር እንደሚዛመዱ ያረጋግጡ።',
+  'Invalid or fake invoice': 'ልክ ያልሆነ ወይም የውሸት ደረሰኝ',
+  'This code does not match any invoice issued by this system. Do not trust this receipt.': 'ይህ ኮድ በዚህ ስርዓት ከተሰጠ ማንኛውም ደረሰኝ ጋር አይዛመድም። ይህን ደረሰኝ አይመኑ።',
+  'Could not check right now': 'አሁን መፈተሽ አልተቻለም', 'Check your internet connection and try again. The server may be waking up.': 'የበይነመረብ ግንኙነትዎን ያረጋግጡና እንደገና ይሞክሩ። አገልጋዩ እየነቃ ሊሆን ይችላል።',
+  'Try again': 'እንደገና ሞክር'
 };
