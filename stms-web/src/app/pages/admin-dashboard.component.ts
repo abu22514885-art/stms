@@ -46,6 +46,38 @@ import { FdatePipe } from '../core/fdate.pipe';
         <div class="card kpi"><span class="kpi-label">{{ 'Loans still owed' | t }}</span><span class="kpi-value">{{ d.loans.outstanding | number:'1.2-2' }}</span><span class="kpi-sub">{{ '{n} customers' | t:{ n: d.loans.customersOwing } }}</span></div>
       </div>
 
+      <div class="card">
+        <h3>{{ 'Credit status' | t }}</h3>
+        <div class="grid four">
+          <div class="card mini"><span class="kpi-label">{{ 'Due in 3 days' | t }}</span><strong>{{ d.credit.dueSoon }}</strong></div>
+          <div class="card mini"><span class="kpi-label">{{ 'Grace period' | t }}</span><strong>{{ d.credit.inGrace }}</strong></div>
+          <div class="card mini"><span class="kpi-label">{{ 'Overdue' | t }}</span><strong>{{ d.credit.overdue }}</strong></div>
+          <div class="card mini"><span class="kpi-label">{{ 'Credit blocked' | t }}</span><strong>{{ d.credit.restricted }}</strong></div>
+        </div>
+        <p class="muted">
+          {{ 'Owed: {a} (penalties {p}). Overdue: {o}.' | t:{ a: (d.credit.totalDue ?? 0 | number:'1.2-2'), p: (d.credit.penaltyDue ?? 0 | number:'1.2-2'), o: (d.credit.overdueAmount ?? 0 | number:'1.2-2') } }}
+          {{ 'Collected this month: {c}, of which penalties {p}.' | t:{ c: (d.credit.collectedThisMonth ?? 0 | number:'1.2-2'), p: (d.credit.penaltyCollectedThisMonth ?? 0 | number:'1.2-2') } }}
+        </p>
+        @if ((d.credit.worst ?? []).length > 0) {
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>{{ 'Customer' | t }}</th><th>{{ 'Invoice' | t }}</th><th class="num">{{ 'Days late' | t }}</th><th>{{ 'Status' | t }}</th><th class="num">{{ 'Total due' | t }}</th></tr></thead>
+              <tbody>
+                @for (w of d.credit.worst ?? []; track w.saleId) {
+                  <tr>
+                    <td>{{ w.customer }}<br><small class="muted">{{ w.phone }}</small></td><td class="nowrap">{{ w.invoiceNo }}</td>
+                    <td class="num">{{ w.overdueDays }}</td>
+                    <td><span class="badge" [class.bad]="w.status === 'Overdue' || w.status === 'Restricted'" [class.warn]="w.status === 'Grace period'">{{ (w.status === 'Restricted' ? 'Credit blocked' : w.status) | t }}</span></td>
+                    <td class="num"><strong>{{ w.totalDue | number:'1.2-2' }}</strong></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+        <a routerLink="/loans">{{ 'Open loans' | t }}</a>
+      </div>
+
       <div class="grid four">
         <div class="card mini"><span class="kpi-label">{{ 'Today' | t }}</span><strong>{{ d.periods.day.sales | number:'1.2-2' }}</strong></div>
         <div class="card mini"><span class="kpi-label">{{ 'This week' | t }}</span><strong>{{ d.periods.week.sales | number:'1.2-2' }}</strong></div>

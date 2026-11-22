@@ -10,6 +10,9 @@ export interface User {
   id: string; fullName: string; username: string; role: Role;
   isActive: boolean; approvalStatus: 'Pending' | 'Approved' | 'Rejected'; createdAt: string;
 }
+export interface PasswordResetRequestItem {
+  id: string; userId: string; fullName: string; username: string; requestedAt: string;
+}
 
 export interface Product {
   id: string; sku: string; name: string;
@@ -20,6 +23,9 @@ export interface Product {
 }
 export interface ProductInput {
   sku: string; name: string; categoryId: number | null; costPrice: number | null; price: number; quantity?: number;
+}
+export interface ProductCreateInput {
+  name: string; categoryId: number | null; costPrice: number | null; price: number; quantity: number;
 }
 
 export interface Provider { id: number; name: string; isActive: boolean; }

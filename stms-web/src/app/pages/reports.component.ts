@@ -6,7 +6,8 @@ import { ReportDoc } from '../core/models';
 import { errMsg, firstOfMonth, isoDate } from '../core/util';
 import { TPipe } from '../core/t.pipe';
 
-type Kind = 'sales' | 'stock' | 'loans' | 'performance' | 'vat-summary' | 'vat-register';
+type Kind = 'sales' | 'stock' | 'loans' | 'performance' | 'vat-summary' | 'vat-register'
+  | 'credit-outstanding' | 'credit-overdue' | 'credit-collections' | 'credit-penalties';
 
 // Admin reports: see them as tables here, or download/print the PDF.
 @Component({
@@ -23,7 +24,7 @@ type Kind = 'sales' | 'stock' | 'loans' | 'performance' | 'vat-summary' | 'vat-r
     </div>
 
     <div class="toolbar">
-      @if (kind() !== 'stock') {
+      @if (needsDates()) {
         <label>{{ 'From' | t }} <input type="date" [ngModel]="from" (ngModelChange)="from = $event"></label>
         <label>{{ 'To' | t }} <input type="date" [ngModel]="to" (ngModelChange)="to = $event"></label>
       }
@@ -84,7 +85,11 @@ export class ReportsComponent implements OnInit {
     { kind: 'loans', label: 'Loans' },
     { kind: 'performance', label: 'Performance' },
     { kind: 'vat-summary', label: 'VAT summary' },
-    { kind: 'vat-register', label: 'VAT register' }
+    { kind: 'vat-register', label: 'VAT register' },
+    { kind: 'credit-outstanding', label: 'Outstanding loans' },
+    { kind: 'credit-overdue', label: 'Overdue customers' },
+    { kind: 'credit-collections', label: 'Collected payments' },
+    { kind: 'credit-penalties', label: 'Penalties' }
   ];
   readonly limit = 500;
 
@@ -106,8 +111,10 @@ export class ReportsComponent implements OnInit {
     this.load();
   }
 
+  needsDates(): boolean { return !['stock', 'loans', 'credit-outstanding', 'credit-overdue'].includes(this.kind()); }
+
   private query(): { from?: string; to?: string } {
-    return this.kind() === 'stock' ? {} : { from: this.from, to: this.to };
+    return this.needsDates() ? { from: this.from, to: this.to } : {};
   }
 
   load(): void {

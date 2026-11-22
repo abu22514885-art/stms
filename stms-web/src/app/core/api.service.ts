@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 import { API_URL } from './config';
 import {
   AdminDashboard, Paged, CompanyInfo, CompanySettings, CreateSaleRequest, CreateSaleResponse, LoanReminder, LoanRow, LoanStatement,
-  PaymentMethod, PaymentRequest, Period, Product, ProductInput, ReportDoc, Sale, SalespersonDashboard,
+  PasswordResetRequestItem, PaymentMethod, PaymentRequest, Period, Product, ProductCreateInput, ProductInput, ReportDoc, Sale, SalespersonDashboard,
   SaleSummary, SessionSummary, StockNotification, User
 } from './models';
 
@@ -32,12 +32,30 @@ export class ApiService {
   approveUser(id: string): Observable<unknown> { return this.http.post(this.url(`/api/users/${id}/approve`), {}); }
   rejectUser(id: string): Observable<unknown> { return this.http.post(this.url(`/api/users/${id}/reject`), {}); }
   toggleUser(id: string): Observable<unknown> { return this.http.post(this.url(`/api/users/${id}/toggle-active`), {}); }
+  vapidPublicKey(): Observable<{ publicKey: string }> {
+    return this.http.get<{ publicKey: string }>(this.url('/api/push/vapid-public-key'));
+  }
+  savePushSubscription(subscription: { endpoint: string; p256dh: string; auth: string }): Observable<void> {
+    return this.http.post<void>(this.url('/api/push/subscriptions'), subscription);
+  }
+  removePushSubscription(subscription: { endpoint: string; p256dh: string; auth: string }): Observable<void> {
+    return this.http.delete<void>(this.url('/api/push/subscriptions'), { body: subscription });
+  }
+  passwordResetRequests(): Observable<PasswordResetRequestItem[]> {
+    return this.http.get<PasswordResetRequestItem[]>(this.url('/api/users/password-reset-requests'));
+  }
+  approvePasswordReset(id: string): Observable<unknown> {
+    return this.http.post(this.url(`/api/users/password-reset-requests/${id}/approve`), {});
+  }
+  rejectPasswordReset(id: string): Observable<unknown> {
+    return this.http.post(this.url(`/api/users/password-reset-requests/${id}/reject`), {});
+  }
 
   // ---- products and stock
   products(q: { search?: string; status?: string; inStock?: boolean; page: number; pageSize: number }): Observable<Paged<Product>> {
     return this.http.get<Paged<Product>>(this.url('/api/products'), { params: params(q) });
   }
-  createProduct(p: ProductInput): Observable<Product> { return this.http.post<Product>(this.url('/api/products'), p); }
+  createProduct(p: ProductCreateInput): Observable<Product> { return this.http.post<Product>(this.url('/api/products'), p); }
   updateProduct(id: string, p: ProductInput): Observable<Product> { return this.http.put<Product>(this.url(`/api/products/${id}`), p); }
   deleteProduct(id: string): Observable<unknown> { return this.http.delete(this.url(`/api/products/${id}`)); }
   restock(id: string, quantity: number): Observable<Product> {

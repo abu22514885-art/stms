@@ -45,6 +45,7 @@ import { FdatePipe } from '../core/fdate.pipe';
         <div class="card kpi"><span class="kpi-label">{{ 'Loan sales' | t }}</span><span class="kpi-value">{{ d.session.loanSales }}</span></div>
         <div class="card kpi"><span class="kpi-label">{{ 'Loan payments received' | t }}</span><span class="kpi-value">{{ d.session.loanPaymentsReceived }}</span></div>
         <div class="card kpi"><span class="kpi-label">{{ 'Open loans' | t }}</span><span class="kpi-value">{{ d.loans.openCount }}</span><span class="kpi-sub">{{ '{n} customers owe' | t:{ n: d.loans.customersOwing } }}</span></div>
+        <div class="card kpi"><span class="kpi-label">{{ 'Overdue loans' | t }}</span><span class="kpi-value">{{ d.credit.overdue + d.credit.restricted + d.credit.inGrace }}</span><span class="kpi-sub">{{ '{n} credit blocked' | t:{ n: d.credit.restrictedCustomers } }}</span></div>
         <div class="card kpi">
           <span class="kpi-label">{{ 'Stock' | t }}</span>
           <span class="kpi-value"><span class="dot big" [class.yellow]="d.stock.level === 'Yellow'" [class.red]="d.stock.level === 'Red'"></span></span>
