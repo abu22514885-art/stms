@@ -3,6 +3,8 @@ WORKDIR /src
 COPY *.csproj ./
 RUN dotnet restore
 COPY . ./
+# the build must not fail if the Fonts folder was not pushed yet
+RUN mkdir -p /src/Fonts
 RUN dotnet publish -c Release -o /app --no-restore
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
