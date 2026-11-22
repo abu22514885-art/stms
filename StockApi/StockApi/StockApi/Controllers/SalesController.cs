@@ -19,7 +19,7 @@ public record SaleRequest(List<SaleItemRequest> Items, bool WantsReceipt, bool I
 [Authorize]
 public class SalesController(AppDbContext db, SessionService sessions, PaymentService payments,
     SaleReader reader, ReceiptPdfService pdf, SettingsService settings, VatService vat,
-    TimeService time) : ControllerBase
+    TimeService time, CreditService credit) : ControllerBase
 {
     private bool IsAdmin => User.IsInRole(Roles.Admin);
 
@@ -56,6 +56,14 @@ public class SalesController(AppDbContext db, SessionService sessions, PaymentSe
                 return Bad("Customer full name is required for a loan.");
             phone = PhoneHelper.Normalize(r.Customer.Phone);
             if (phone is null) return Bad("Enter a valid customer phone number.");
+
+            // A customer 30+ days past due on any loan cannot take new credit
+            var known = await db.Customers.AsNoTracking().FirstOrDefaultAsync(c => c.Phone == phone);
+            if (known is not null)
+            {
+                var (blocked, why) = await credit.CheckBlockedAsync(known.Id);
+                if (blocked) return Conflict(new { message = why });
+            }
         }
 
         // Prices: before VAT, or after VAT when the customer wants a receipt
@@ -66,9 +74,15 @@ public class SalesController(AppDbContext db, SessionService sessions, PaymentSe
             var vatLine = r.WantsReceipt ? p.VatAmount * qty : 0m;
             items.Add(new SaleItem
             {
-                Id = Guid.NewGuid(), ProductId = p.Id, ProductSku = p.Sku, ProductName = p.Name,
-                Quantity = qty, UnitPrice = p.Price, UnitCost = p.CostPrice,
-                VatAmount = vatLine, LineTotal = qty * p.Price + vatLine
+                Id = Guid.NewGuid(),
+                ProductId = p.Id,
+                ProductSku = p.Sku,
+                ProductName = p.Name,
+                Quantity = qty,
+                UnitPrice = p.Price,
+                UnitCost = p.CostPrice,
+                VatAmount = vatLine,
+                LineTotal = qty * p.Price + vatLine
             });
         }
         var subtotal = items.Sum(i => i.Quantity * i.UnitPrice);
@@ -109,10 +123,18 @@ public class SalesController(AppDbContext db, SessionService sessions, PaymentSe
         // database then updates amount_paid and status (Paid / PartiallyPaid).
         var sale = new Sale
         {
-            Id = Guid.NewGuid(), SessionId = session.Id, SalespersonId = userId, Customer = customer,
-            WantsReceipt = r.WantsReceipt, IsLoan = r.IsLoan,
-            Subtotal = subtotal, VatTotal = vatTotal, Total = total,
-            AmountPaid = 0, Status = SaleStatus.Loan
+            Id = Guid.NewGuid(),
+            SessionId = session.Id,
+            SalespersonId = userId,
+            Customer = customer,
+            WantsReceipt = r.WantsReceipt,
+            IsLoan = r.IsLoan,
+            DueDate = r.IsLoan ? await credit.NewDueDateAsync() : null,
+            Subtotal = subtotal,
+            VatTotal = vatTotal,
+            Total = total,
+            AmountPaid = 0,
+            Status = SaleStatus.Loan
         };
         foreach (var item in items)
         {
@@ -121,8 +143,12 @@ public class SalesController(AppDbContext db, SessionService sessions, PaymentSe
             // Stock is changed only through the ledger; the database trigger updates products.quantity
             db.StockMovements.Add(new StockMovement
             {
-                ProductId = item.ProductId, ChangeQty = -item.Quantity, Reason = "Sale",
-                SaleId = sale.Id, SaleItemId = item.Id, UserId = userId
+                ProductId = item.ProductId,
+                ChangeQty = -item.Quantity,
+                Reason = "Sale",
+                SaleId = sale.Id,
+                SaleItemId = item.Id,
+                UserId = userId
             });
         }
         foreach (var pay in pays)
@@ -177,18 +203,31 @@ public class SalesController(AppDbContext db, SessionService sessions, PaymentSe
         var rows = await q.OrderByDescending(s => s.CreatedAt).ThenBy(s => s.Id)
             .Select(s => new
             {
-                s.Id, s.InvoiceNo, s.CreatedAt,
+                s.Id,
+                s.InvoiceNo,
+                s.CreatedAt,
                 Salesperson = s.Salesperson!.FullName,
                 Customer = s.Customer != null ? s.Customer.FullName : null,
-                s.IsLoan, s.WantsReceipt, s.Status,
+                s.IsLoan,
+                s.WantsReceipt,
+                s.Status,
                 ItemCount = s.Items.Sum(i => i.Quantity),
-                s.Total, s.AmountPaid
+                s.Total,
+                s.AmountPaid
             }).ToPagedAsync(page, pageSize);
 
         var admin = IsAdmin;
         return Ok(rows.Map(s => new
         {
-            s.Id, s.InvoiceNo, s.CreatedAt, s.Salesperson, s.Customer, s.IsLoan, s.WantsReceipt, s.Status, s.ItemCount,
+            s.Id,
+            s.InvoiceNo,
+            s.CreatedAt,
+            s.Salesperson,
+            s.Customer,
+            s.IsLoan,
+            s.WantsReceipt,
+            s.Status,
+            s.ItemCount,
             Total = admin ? (decimal?)s.Total : null,
             AmountPaid = admin ? (decimal?)s.AmountPaid : null
         }));

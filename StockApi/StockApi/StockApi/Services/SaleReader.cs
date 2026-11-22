@@ -10,7 +10,8 @@ public record CustomerDto(Guid Id, string FullName, string Phone);
 public record SaleDto(Guid Id, string InvoiceNo, DateTime CreatedAt, Guid SalespersonId, string Salesperson,
     bool WantsReceipt, bool IsLoan, string Status,
     decimal Subtotal, decimal VatTotal, decimal Total, decimal AmountPaid, decimal Balance,
-    CustomerDto? Customer, List<SaleItemDto> Items, List<PaymentDto> Payments);
+    CustomerDto? Customer, List<SaleItemDto> Items, List<PaymentDto> Payments,
+    string? BuyerName = null, string? BuyerTin = null);
 
 public class SaleReader(AppDbContext db)
 {
@@ -37,6 +38,7 @@ public class SaleReader(AppDbContext db)
             s.Payments.OrderBy(p => p.PaidAt)
                 .Select(p => new PaymentDto(p.Id, p.PaymentMethod?.Name ?? "", p.PaymentProvider?.Name,
                     p.TransactionRef, p.Amount, p.PaidAt, p.IsLoanRepayment, admin ? p.ReceiptImagePath : null))
-                .ToList());
+                .ToList(),
+            s.BuyerName, s.BuyerTin);
     }
 }

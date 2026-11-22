@@ -7,7 +7,7 @@ import { VAT_RATE } from '../core/config';
 import { CreateSaleRequest, CreateSaleResponse, PaymentDraft, PaymentMethod, Product } from '../core/models';
 import { errMsg, r2 } from '../core/util';
 import { PagerComponent } from '../shared/pager.component';
-import { PaymentSuccessComponent } from '../shared/Payment success.component';
+import { PaymentSuccessComponent } from '../shared/payment-success.component';
 import { PaymentFormComponent } from '../shared/payment-form.component';
 import { TPipe } from '../core/t.pipe';
 
@@ -81,6 +81,17 @@ interface CartLine { product: Product; qty: number; }
           </div>
         </div>
 
+        @if (!isLoan()) {
+          <div class="field">
+            <label>{{ 'Customer name (optional)' | t }}</label>
+            <input type="text" maxlength="150" [ngModel]="buyerName()" (ngModelChange)="buyerName.set($event)">
+          </div>
+        }
+        <div class="field">
+          <label>{{ 'Customer TIN (optional)' | t }}</label>
+          <input type="text" inputmode="numeric" maxlength="13" placeholder="0012345678" [ngModel]="buyerTin()" (ngModelChange)="buyerTin.set($event)">
+        </div>
+
         @if (isLoan()) {
           <div class="field">
             <label>{{ 'Customer full name' | t }}</label>
@@ -129,6 +140,8 @@ export class SellComponent implements OnInit {
   readonly firstPayment = signal(false);
   readonly customerName = signal('');
   readonly customerPhone = signal('');
+  readonly buyerName = signal('');
+  readonly buyerTin = signal('');
   readonly draft = signal<PaymentDraft | null>(null);
   readonly error = signal('');
   readonly busy = signal(false);
@@ -157,6 +170,7 @@ export class SellComponent implements OnInit {
 
   readonly blockReason = computed(() => {
     if (this.cart().length === 0) return 'Add at least one item.';
+    if (this.buyerTin().trim() && this.buyerTin().replace(/\D/g, '').length !== 10) return 'The customer TIN must be 10 digits.';
     if (this.isLoan()) {
       if (!this.customerName().trim()) return 'Enter the customer full name.';
       if (this.customerPhone().replace(/\D/g, '').length < 7) return 'Enter the customer phone number.';
@@ -224,7 +238,9 @@ export class SellComponent implements OnInit {
     const req: CreateSaleRequest = {
       items: this.cart().map(l => ({ productId: l.product.id, quantity: l.qty })),
       wantsReceipt: this.wantsReceipt(),
-      isLoan: this.isLoan()
+      isLoan: this.isLoan(),
+      buyerTin: this.buyerTin().trim() || null,
+      buyerName: this.isLoan() ? null : (this.buyerName().trim() || null)
     };
     if (this.isLoan()) {
       req.customer = { fullName: this.customerName().trim(), phone: this.customerPhone().trim() };
@@ -255,6 +271,8 @@ export class SellComponent implements OnInit {
     this.firstPayment.set(false);
     this.customerName.set('');
     this.customerPhone.set('');
+    this.buyerName.set('');
+    this.buyerTin.set('');
     this.search.set('');
     this.payForm?.reset();
   }

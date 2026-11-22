@@ -3,7 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { API_URL } from './config';
 import {
-  AdminDashboard, Paged, CompanyInfo, CompanySettings, CreateSaleRequest, CreateSaleResponse, LoanRow,
+  AdminDashboard, Paged, CompanyInfo, CompanySettings, CreateSaleRequest, CreateSaleResponse, LoanReminder, LoanRow, LoanStatement,
   PaymentMethod, PaymentRequest, Period, Product, ProductInput, ReportDoc, Sale, SalespersonDashboard,
   SaleSummary, SessionSummary, StockNotification, User
 } from './models';
@@ -75,6 +75,9 @@ export class ApiService {
     return this.http.get<Paged<LoanRow>>(this.url('/api/loans'), { params: params({ status, search, page, pageSize }) });
   }
   loan(id: string): Observable<Sale> { return this.http.get<Sale>(this.url(`/api/loans/${id}`)); }
+  loanStatement(id: string): Observable<LoanStatement> { return this.http.get<LoanStatement>(this.url(`/api/loans/${id}/statement`)); }
+  loanReminders(): Observable<LoanReminder[]> { return this.http.get<LoanReminder[]>(this.url('/api/loans/reminders')); }
+  reminderDone(id: string): Observable<void> { return this.http.post<void>(this.url(`/api/loans/reminders/${id}/done`), {}); }
   payLoan(id: string, payment: PaymentRequest): Observable<Sale> {
     return this.http.post<Sale>(this.url(`/api/loans/${id}/payments`), payment);
   }
@@ -104,10 +107,10 @@ export class ApiService {
   }
 
   // ---- reports (json for the screen, pdf for download)
-  report(kind: 'sales' | 'stock' | 'loans' | 'performance' | 'vat-summary' | 'vat-register', q: { from?: string; to?: string; status?: string }): Observable<ReportDoc> {
+  report(kind: 'sales' | 'stock' | 'loans' | 'performance' | 'vat-summary' | 'vat-register' | 'credit-outstanding' | 'credit-overdue' | 'credit-collections' | 'credit-penalties', q: { from?: string; to?: string; status?: string }): Observable<ReportDoc> {
     return this.http.get<ReportDoc>(this.url(`/api/reports/${kind}`), { params: params({ ...q, format: 'json' }) });
   }
-  reportPdf(kind: 'sales' | 'stock' | 'loans' | 'performance' | 'vat-summary' | 'vat-register', q: { from?: string; to?: string; status?: string }): Observable<Blob> {
+  reportPdf(kind: 'sales' | 'stock' | 'loans' | 'performance' | 'vat-summary' | 'vat-register' | 'credit-outstanding' | 'credit-overdue' | 'credit-collections' | 'credit-penalties', q: { from?: string; to?: string; status?: string }): Observable<Blob> {
     return this.http.get(this.url(`/api/reports/${kind}`), { params: params({ ...q, format: 'pdf' }), responseType: 'blob' });
   }
 

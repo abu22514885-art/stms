@@ -39,11 +39,21 @@ public class ReportService(AppDbContext db, StatsService stats, TimeService time
         var rows = await q.OrderBy(s => s.CreatedAt).Take(RowCap)
             .Select(s => new
             {
-                s.Id, s.InvoiceNo, s.CreatedAt,
+                s.Id,
+                s.InvoiceNo,
+                s.CreatedAt,
                 Salesperson = s.Salesperson!.FullName,
                 Customer = s.Customer != null ? s.Customer.FullName : null,
-                s.IsLoan, s.WantsReceipt, s.Subtotal, s.VatTotal, s.Total, s.AmountPaid, s.Status,
-                Items = s.Items.Sum(i => i.Quantity)
+                s.IsLoan,
+                s.WantsReceipt,
+                s.Subtotal,
+                s.VatTotal,
+                s.Total,
+                s.AmountPaid,
+                s.Status,
+                s.BuyerName,
+                s.BuyerTin,
+                Lines = s.Items.OrderBy(i => i.ProductName).Select(i => new { i.ProductName, i.Quantity }).ToList()
             }).ToListAsync();
 
         var pays = await db.Payments.AsNoTracking()
@@ -54,14 +64,15 @@ public class ReportService(AppDbContext db, StatsService stats, TimeService time
             .ToDictionary(g => g.Key, g => string.Join(" + ", g.Select(x => x.Name).Distinct()));
 
         var table = new ReportSection(null,
-            new() { "#", "Invoice", "Date", "Salesperson", "Customer", "Paid by", "Items", "Subtotal", "VAT", "Total", "Paid", "Status" },
-            new() { true, false, false, false, false, false, true, true, true, true, true, false },
-            new() { 0.5f, 2.2f, 1.8f, 1.8f, 2f, 2f, 0.7f, 1.3f, 1.1f, 1.3f, 1.3f, 1.4f },
+            new() { "#", "Invoice", "Date", "Salesperson", "Customer", "Buyer TIN", "Items sold", "Paid by", "Subtotal", "VAT", "Total", "Paid", "Status" },
+            new() { true, false, false, false, false, false, false, false, true, true, true, true, false },
+            new() { 0.4f, 2f, 1.6f, 1.5f, 1.7f, 1.4f, 3.6f, 1.6f, 1.2f, 1f, 1.2f, 1.2f, 1.3f },
             rows.Select((r, i) => new List<string>
             {
-                (i + 1).ToString(Inv), r.InvoiceNo, When(r.CreatedAt), r.Salesperson, r.Customer ?? "",
+                (i + 1).ToString(Inv), r.InvoiceNo, When(r.CreatedAt), r.Salesperson, r.Customer ?? r.BuyerName ?? "", r.BuyerTin ?? "",
+                string.Join(", ", r.Lines.Select(l => $"{l.ProductName} x{l.Quantity}")),
                 r.IsLoan && !paidBy.ContainsKey(r.Id) ? "Loan" : paidBy.GetValueOrDefault(r.Id, "-"),
-                r.Items.ToString(Inv), M(r.Subtotal), M(r.VatTotal), M(r.Total), M(r.AmountPaid), StatusText(r.Status)
+                M(r.Subtotal), M(r.VatTotal), M(r.Total), M(r.AmountPaid), StatusText(r.Status)
             }).ToList(),
             new()
             {
@@ -124,7 +135,11 @@ public class ReportService(AppDbContext db, StatsService stats, TimeService time
         var loans = await q.OrderBy(s => s.CreatedAt)
             .Select(s => new
             {
-                s.InvoiceNo, s.CreatedAt, s.Total, s.AmountPaid, s.Status,
+                s.InvoiceNo,
+                s.CreatedAt,
+                s.Total,
+                s.AmountPaid,
+                s.Status,
                 Name = s.Customer != null ? s.Customer.FullName : "",
                 Phone = s.Customer != null ? s.Customer.Phone : ""
             }).ToListAsync();

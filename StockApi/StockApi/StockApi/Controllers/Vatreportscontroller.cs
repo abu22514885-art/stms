@@ -152,7 +152,8 @@ public class VatReportsController(AppDbContext db, TimeService time, ReportPdfSe
             {
                 s.InvoiceNo,
                 s.CreatedAt,
-                Customer = s.Customer != null ? s.Customer.FullName : null,
+                Customer = s.Customer != null ? s.Customer.FullName : s.BuyerName,
+                s.BuyerTin,
                 s.Subtotal,
                 s.VatTotal,
                 s.Total,
@@ -166,16 +167,16 @@ public class VatReportsController(AppDbContext db, TimeService time, ReportPdfSe
             return new List<string>
             {
                 (i + 1).ToString(Inv), x.InvoiceNo, time.ToLocal(x.CreatedAt).ToString("yyyy-MM-dd HH:mm", Inv),
-                $"{e.Day} {EtMonthName(e.Month)} {e.Year}", x.Customer ?? "",
+                $"{e.Day} {EtMonthName(e.Month)} {e.Year}", x.Customer ?? "", x.BuyerTin ?? "",
                 M(x.Subtotal), M(x.VatTotal), M(x.Total),
                 x.Status == SaleStatus.PartiallyPaid ? "Partially paid" : x.Status
             };
         }).ToList();
 
         var table = new ReportSection(null,
-            new() { "#", "Invoice", "Date", "Ethiopian date", "Customer", "Taxable amount", "VAT", "Total", "Status" },
-            new() { true, false, false, false, false, true, true, true, false },
-            new() { 0.5f, 2.2f, 1.8f, 2f, 2.2f, 1.6f, 1.2f, 1.5f, 1.4f },
+            new() { "#", "Invoice", "Date", "Ethiopian date", "Customer", "Buyer TIN", "Taxable amount", "VAT", "Total", "Status" },
+            new() { true, false, false, false, false, false, true, true, true, false },
+            new() { 0.5f, 2.2f, 1.8f, 2f, 2.2f, 1.6f, 1.6f, 1.2f, 1.5f, 1.4f },
             rows,
             new()
             {

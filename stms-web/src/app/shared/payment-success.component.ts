@@ -36,6 +36,8 @@ import { TPipe } from '../core/t.pipe';
           <div class="ps-meta">
             <span>{{ 'Salesperson' | t }}: {{ sale.salesperson }}</span>
             @if (sale.customer) { <span>{{ 'Customer' | t }}: {{ sale.customer.fullName }}</span> }
+            @else if (sale.buyerName) { <span>{{ 'Customer' | t }}: {{ sale.buyerName }}</span> }
+            @if (sale.buyerTin) { <span>{{ 'Customer TIN' | t }}: {{ sale.buyerTin }}</span> }
           </div>
 
           <table class="ps-items">

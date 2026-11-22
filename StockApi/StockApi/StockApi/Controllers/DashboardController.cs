@@ -9,7 +9,7 @@ namespace StockApi.Controllers;
 [ApiController]
 [Route("api/dashboard")]
 [Authorize]
-public class DashboardController(AppDbContext db, SessionService sessions, StatsService stats, TimeService time) : ControllerBase
+public class DashboardController(AppDbContext db, SessionService sessions, StatsService stats, TimeService time, CreditService credit) : ControllerBase
 {
     // Salesperson dashboard: NO revenue or money totals anywhere in this response.
     [HttpGet("salesperson")]
@@ -29,6 +29,7 @@ public class DashboardController(AppDbContext db, SessionService sessions, Stats
         var lowStock = await db.Products.CountAsync(p =>
             p.Quantity > 0 && p.StockedQuantity > 0 && p.Quantity * 4 <= p.StockedQuantity);
         var level = outOfStock > 0 ? StockInfo.Red : lowStock > 0 ? StockInfo.Yellow : StockInfo.Green;
+        var cs = await credit.SummaryAsync();   // counts only: no money for salespeople
 
         var (startUtc, endUtc) = time.DayRangeUtc(time.Today());
         var recent = await db.Sales.AsNoTracking()
@@ -36,7 +37,11 @@ public class DashboardController(AppDbContext db, SessionService sessions, Stats
             .OrderByDescending(s => s.CreatedAt).Take(5)
             .Select(s => new
             {
-                s.Id, s.InvoiceNo, s.CreatedAt, s.IsLoan, s.Status,
+                s.Id,
+                s.InvoiceNo,
+                s.CreatedAt,
+                s.IsLoan,
+                s.Status,
                 ItemCount = s.Items.Sum(i => i.Quantity)
             }).ToListAsync();
 
@@ -44,6 +49,7 @@ public class DashboardController(AppDbContext db, SessionService sessions, Stats
         {
             session = today,
             loans = new { openCount = openLoans, customersOwing },
+            credit = new { cs.DueSoon, cs.InGrace, cs.Overdue, cs.Restricted, cs.OverdueCustomers, cs.RestrictedCustomers },
             stock = new { totalProducts, lowStock, outOfStock, level },
             recentSales = recent
         });
@@ -93,7 +99,11 @@ public class DashboardController(AppDbContext db, SessionService sessions, Stats
             .Select(p => new { p.Id, p.Name, p.Sku, p.Quantity, p.StockedQuantity }).ToListAsync();
         var lowItems = lowRows.Select(p => new
         {
-            p.Id, p.Name, p.Sku, p.Quantity, p.StockedQuantity,
+            p.Id,
+            p.Name,
+            p.Sku,
+            p.Quantity,
+            p.StockedQuantity,
             Status = StockInfo.Status(p.Quantity, p.StockedQuantity)
         }).ToList();
         var level = outOfStock > 0 ? StockInfo.Red : lowStock > 0 ? StockInfo.Yellow : StockInfo.Green;
@@ -123,6 +133,7 @@ public class DashboardController(AppDbContext db, SessionService sessions, Stats
             selected,
             stock = new { totalProducts, totalUnits, stockValueAtCost = stockValue, lowStock, outOfStock, level, lowItems },
             loans,
+            credit = await credit.SummaryAsync(),
             todaySessions,
             pendingApprovals
         });

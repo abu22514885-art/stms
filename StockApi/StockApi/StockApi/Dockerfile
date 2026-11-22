@@ -11,6 +11,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends libfontconfig1 
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build /app .
+# Amharic font for the receipt PDF
+COPY --from=build /src/Fonts ./Fonts
 ENV ASPNETCORE_HTTP_PORTS=10000
 EXPOSE 10000
 ENTRYPOINT ["dotnet", "StockApi.dll"]

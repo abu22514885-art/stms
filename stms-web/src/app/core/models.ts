@@ -10,9 +10,6 @@ export interface User {
   id: string; fullName: string; username: string; role: Role;
   isActive: boolean; approvalStatus: 'Pending' | 'Approved' | 'Rejected'; createdAt: string;
 }
-export interface PasswordResetRequestItem {
-  id: string; userId: string; fullName: string; username: string; requestedAt: string;
-}
 
 export interface Product {
   id: string; sku: string; name: string;
@@ -23,9 +20,6 @@ export interface Product {
 }
 export interface ProductInput {
   sku: string; name: string; categoryId: number | null; costPrice: number | null; price: number; quantity?: number;
-}
-export interface ProductCreateInput {
-  name: string; categoryId: number | null; costPrice: number | null; price: number; quantity: number;
 }
 
 export interface Provider { id: number; name: string; isActive: boolean; }
@@ -50,6 +44,7 @@ export interface Sale {
   wantsReceipt: boolean; isLoan: boolean; status: string;
   subtotal: number; vatTotal: number; total: number; amountPaid: number; balance: number;
   customer: Customer | null; items: SaleItem[]; payments: SalePayment[];
+  buyerName?: string | null; buyerTin?: string | null;
 }
 export interface SaleSummary {
   id: string; invoiceNo: string; createdAt: string; salesperson: string; customer: string | null;
@@ -61,12 +56,40 @@ export interface CreateSaleRequest {
   wantsReceipt: boolean; isLoan: boolean;
   customer?: { fullName: string; phone: string } | null;
   payments?: PaymentRequest[];
+  buyerName?: string | null; buyerTin?: string | null;
 }
 export interface CreateSaleResponse { sale: Sale; receiptUrl: string; }
 
+export type CreditStatus = 'Paid' | 'Current' | 'Due soon' | 'Grace period' | 'Overdue' | 'Restricted';
 export interface LoanRow {
   id: string; invoiceNo: string; createdAt: string; customerName: string; phone: string;
   total: number; amountPaid: number; balance: number; status: string;
+  dueDate: string | null; overdueDays: number; creditStatus: CreditStatus; penaltyDue: number; totalDue: number;
+}
+export interface LoanStatement {
+  saleId: string; invoiceNo: string; total: number; amountPaid: number;
+  dueDate: string | null; graceEnd: string | null; overdueDays: number; daysToDue: number; status: CreditStatus;
+  balance: number; penaltyCharged: number; penaltyPaid: number; penaltyDue: number; totalDue: number;
+  nextPenaltyDate: string | null;
+  policy: { dueDays: number; graceDays: number; penaltyRatePercent: number; blockDays: number };
+  penalties: { periodNo: number; periodStart: string; balanceBase: number; rate: number; amount: number }[];
+  payments: { id: string; paidAt: string; amount: number; penaltyPortion: number; toSale: number }[];
+}
+export interface LoanReminder {
+  id: string; saleId: string; invoiceNo: string; customer: string; phone: string; createdAt: string;
+  kind: string; dueOffset: number; overdueDays: number; creditStatus: CreditStatus; totalDue: number; smsText: string;
+}
+export interface CreditRow {
+  saleId: string; invoiceNo: string; customer: string; phone: string; dueDate: string | null;
+  overdueDays: number; status: CreditStatus; principal: number; penaltyDue: number; totalDue: number;
+}
+// Salespeople receive the counts only (money fields are missing)
+export interface CreditSummary {
+  openLoans: number; customersOwing: number; dueSoon: number; inGrace: number; overdue: number; restricted: number;
+  overdueCustomers: number; restrictedCustomers: number;
+  principal?: number; penaltyDue?: number; totalDue?: number; overdueAmount?: number;
+  collectedThisMonth?: number; penaltyCollectedThisMonth?: number; penaltyChargedThisMonth?: number;
+  worst?: CreditRow[];
 }
 
 export interface SessionSummary {
@@ -78,6 +101,7 @@ export interface SessionSummary {
 export interface SalespersonDashboard {
   session: SessionSummary;
   loans: { openCount: number; customersOwing: number };
+  credit: { dueSoon: number; inGrace: number; overdue: number; restricted: number; overdueCustomers: number; restrictedCustomers: number };
   stock: { totalProducts: number; lowStock: number; outOfStock: number; level: StockLevel };
   recentSales: { id: string; invoiceNo: string; createdAt: string; isLoan: boolean; status: string; itemCount: number }[];
 }
@@ -103,6 +127,7 @@ export interface AdminDashboard {
     lowItems: { id: string; name: string; sku: string; quantity: number; stockedQuantity: number; status: StockLevel }[];
   };
   loans: { openCount: number; customersOwing: number; outstanding: number };
+  credit: CreditSummary;
   todaySessions: { id: string; salesperson: string; startedAt: string; checkedOutAt: string | null }[];
   pendingApprovals: number;
 }

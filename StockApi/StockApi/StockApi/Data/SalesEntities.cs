@@ -41,6 +41,7 @@ public class Sale
     public decimal AmountPaid { get; set; }         // kept in sync by a DB trigger
     public string Status { get; set; } = SaleStatus.Loan;   // kept in sync by a DB trigger
     public bool IsLoan { get; set; }
+    public DateOnly? DueDate { get; set; }          // loans only: sale date + 15 days
     public DateTime CreatedAt { get; set; }
     public List<SaleItem> Items { get; set; } = new();
     public List<Payment> Payments { get; set; } = new();
@@ -74,4 +75,5 @@ public class Payment
     public Guid ReceivedBy { get; set; }
     public DateTime PaidAt { get; set; }
     public bool IsLoanRepayment { get; set; }
+    public decimal PenaltyPortion { get; set; }     // part of this payment that paid penalty (the rest paid the sale)
 }
