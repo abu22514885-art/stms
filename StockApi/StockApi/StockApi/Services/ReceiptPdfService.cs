@@ -27,7 +27,7 @@ public class ReceiptPdfService(TimeService time, IConfiguration cfg)
                 if (name is not null)
                 {
                     using var s = asm.GetManifestResourceStream(name)!;
-                    FontManager.RegisterFont(s);
+                    FontManager.RegisterFontFromStream(s);
                     continue;
                 }
                 // Not embedded: read the file from the Fonts folder next to the program (Docker) or the project (dotnet run)
@@ -36,7 +36,7 @@ public class ReceiptPdfService(TimeService time, IConfiguration cfg)
                 if (path is not null)
                 {
                     using var fs = File.OpenRead(path);
-                    FontManager.RegisterFont(fs);
+                    FontManager.RegisterFontFromStream(fs);
                 }
             }
             catch { /* without the font the Amharic letters are missing, the rest of the receipt still prints */ }

@@ -41,6 +41,8 @@ public class Sale
     public decimal AmountPaid { get; set; }         // kept in sync by a DB trigger
     public string Status { get; set; } = SaleStatus.Loan;   // kept in sync by a DB trigger
     public bool IsLoan { get; set; }
+    public string? BuyerName { get; set; }         // name printed on the invoice (also for cash sales)
+    public string? BuyerTin { get; set; }          // buyer's TIN, optional (10 digits)
     public DateOnly? DueDate { get; set; }          // loans only: sale date + 15 days
     public DateTime CreatedAt { get; set; }
     public List<SaleItem> Items { get; set; } = new();
