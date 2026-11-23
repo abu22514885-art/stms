@@ -20,7 +20,7 @@ public record SaleRequest(List<SaleItemRequest> Items, bool WantsReceipt, bool I
 [Authorize]
 public class SalesController(AppDbContext db, SessionService sessions, PaymentService payments,
     SaleReader reader, ReceiptPdfService pdf, SettingsService settings, VatService vat,
-    TimeService time, CreditService credit) : ControllerBase
+    TimeService time, CreditService credit, WebPushNotificationService push) : ControllerBase
 {
     private bool IsAdmin => User.IsInRole(Roles.Admin);
 
@@ -181,6 +181,23 @@ public class SalesController(AppDbContext db, SessionService sessions, PaymentSe
         { return Conflict(new { message = "Not enough stock. Someone just sold the last items. Refresh and try again." }); }
 
         var dto = await reader.GetAsync(sale.Id, IsAdmin);
+
+        var saleKind = sale.IsLoan ? "Loan sale" : "Sale";
+        await push.TryNotifyAdminsAsync($"{saleKind} {sale.InvoiceNo}",
+            $"{Fmt.Money(sale.Total)} ETB by {dto?.Salesperson ?? "a salesperson"}", "/sales");
+        try
+        {
+            var soldIds = sale.Items.Select(i => i.ProductId).ToList();
+            var low = await db.Products.AsNoTracking()
+                .Where(pr => soldIds.Contains(pr.Id) && !pr.IsDeleted &&
+                            (pr.Quantity <= 0 || (pr.StockedQuantity > 0 && pr.Quantity * 4 <= pr.StockedQuantity)))
+                .Select(pr => new { pr.Name, pr.Quantity }).ToListAsync();
+            foreach (var lowItem in low)
+                await push.TryNotifyAdminsAsync(lowItem.Quantity <= 0 ? "Out of stock" : "Low stock",
+                    $"{lowItem.Name}: {lowItem.Quantity} left", "/products");
+        }
+        catch { /* alerts are best effort */ }
+
         return CreatedAtAction(nameof(Get), new { id = sale.Id }, new { sale = dto, receiptUrl = $"/api/sales/{sale.Id}/receipt" });
     }
 

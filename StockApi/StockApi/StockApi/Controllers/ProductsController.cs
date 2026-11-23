@@ -17,7 +17,7 @@ public record ProductDto(Guid Id, string Sku, string Name, int? CategoryId, stri
 [ApiController]
 [Route("api/products")]
 [Authorize]
-public class ProductsController(AppDbContext db, VatService vat) : ControllerBase
+public class ProductsController(AppDbContext db, VatService vat, WebPushNotificationService push) : ControllerBase
 {
     private bool IsAdmin => User.IsInRole(Roles.Admin);
 
@@ -97,9 +97,14 @@ public class ProductsController(AppDbContext db, VatService vat) : ControllerBas
         var (price, vatAmount, withVat) = VatService.Compute(r.Price, await vat.GetRateAsync());
         var p = new Product
         {
-            Id = Guid.NewGuid(), Sku = sku, Name = name, CategoryId = r.CategoryId,
+            Id = Guid.NewGuid(),
+            Sku = sku,
+            Name = name,
+            CategoryId = r.CategoryId,
             CostPrice = Math.Round(r.CostPrice ?? 0, 2),
-            Price = price, VatAmount = vatAmount, PriceWithVat = withVat,
+            Price = price,
+            VatAmount = vatAmount,
+            PriceWithVat = withVat,
             CreatedBy = User.UserId()
         };
         db.Products.Add(p);
@@ -168,6 +173,7 @@ public class ProductsController(AppDbContext db, VatService vat) : ControllerBas
         { ProductId = id, ChangeQty = r.Quantity, Reason = "Restock", UserId = User.UserId() });
         await db.SaveChangesAsync();
         await db.Entry(p).ReloadAsync();
+        await push.TryNotifyAdminsAsync("Restocked", $"{p.Name}: +{r.Quantity}, now {p.Quantity} in stock", "/products");
         return Ok(ToDto(p, IsAdmin));
     }
 
@@ -181,7 +187,9 @@ public class ProductsController(AppDbContext db, VatService vat) : ControllerBas
 
         db.StockMovements.Add(new StockMovement
         {
-            ProductId = id, ChangeQty = r.Quantity, UserId = User.UserId(),
+            ProductId = id,
+            ChangeQty = r.Quantity,
+            UserId = User.UserId(),
             Reason = r.Reason == "Damage" ? "Damage" : "Adjustment"
         });
         try { await db.SaveChangesAsync(); }

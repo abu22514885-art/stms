@@ -11,7 +11,7 @@ namespace StockApi.Controllers;
 [Route("api/loans")]
 [Authorize]
 public class LoansController(AppDbContext db, PaymentService payments, SaleReader reader,
-    CreditService credit, TimeService time) : ControllerBase
+    CreditService credit, TimeService time, WebPushNotificationService push) : ControllerBase
 {
     private bool IsAdmin => User.IsInRole(Roles.Admin);
 
@@ -232,6 +232,8 @@ public class LoansController(AppDbContext db, PaymentService payments, SaleReade
         catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: "P0001" })
         { return Conflict(new { message = "Amount is more than the remaining balance. Refresh and try again." }); }
 
+        await push.TryNotifyAdminsAsync("Loan payment",
+            $"{Fmt.Money(pay.Amount)} ETB received for {sale.InvoiceNo}", "/loans");
         return Ok(await reader.GetAsync(id, IsAdmin));
     }
 }

@@ -18,6 +18,13 @@ public class WebPushNotificationService(AppDbContext db, IConfiguration configur
         await SendAsync(ids, title, body, url);
     }
 
+    // Never throws: a failed alert must not break a sale, payment or restock.
+    public async Task TryNotifyAdminsAsync(string title, string body, string url)
+    {
+        try { await SendToAdminsAsync(title, body, url); }
+        catch (Exception ex) { logger.LogWarning(ex, "Admin push notification failed."); }
+    }
+
     public Task SendToUserAsync(Guid userId, string title, string body, string url) =>
         SendAsync(new[] { userId }, title, body, url);
 
