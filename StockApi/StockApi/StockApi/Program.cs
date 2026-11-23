@@ -61,6 +61,8 @@ builder.Services.AddScoped<StatsService>();
 builder.Services.AddScoped<ReportService>();
 builder.Services.AddScoped<ReportPdfService>();
 builder.Services.AddScoped<WebPushNotificationService>();
+builder.Services.AddScoped<CreditService>();
+builder.Services.AddHostedService<CreditMonitor>();
 
 QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 
