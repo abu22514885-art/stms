@@ -15,6 +15,7 @@ namespace StockApi.Services;
 public class ReceiptPdfService(TimeService time, IConfiguration cfg)
 {
     private const string Eth = "Noto Sans Ethiopic";
+    private static bool _fontOk;      // true when the Amharic font was found; otherwise the receipt is English only
 
     static ReceiptPdfService()
     {
@@ -28,6 +29,7 @@ public class ReceiptPdfService(TimeService time, IConfiguration cfg)
                 {
                     using var s = asm.GetManifestResourceStream(name)!;
                     FontManager.RegisterFontFromStream(s);
+                    _fontOk = true;
                     continue;
                 }
                 // Not embedded: read the file from the Fonts folder next to the program (Docker) or the project (dotnet run)
@@ -37,6 +39,7 @@ public class ReceiptPdfService(TimeService time, IConfiguration cfg)
                 {
                     using var fs = File.OpenRead(path);
                     FontManager.RegisterFontFromStream(fs);
+                    _fontOk = true;
                 }
             }
             catch { /* without the font the Amharic letters are missing, the rest of the receipt still prints */ }
@@ -49,9 +52,11 @@ public class ReceiptPdfService(TimeService time, IConfiguration cfg)
     private static void Bi(TextDescriptor t, string en, string am, bool bold = false)
     {
         var a = t.Span(en);
+        if (bold) a.Bold();
+        if (!_fontOk) return;      // no Amharic font on the server: print English only instead of failing
         var b = t.Span(" / ");
         var c = t.Span(am).FontFamily(Eth);
-        if (bold) { a.Bold(); b.Bold(); c.Bold(); }
+        if (bold) { b.Bold(); c.Bold(); }
     }
 
     private static IContainer HeadCell(IContainer c) =>
