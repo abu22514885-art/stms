@@ -5,7 +5,7 @@ import { ApiService } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
 import { PdfService } from '../core/pdf.service';
 import { Sale, SaleSummary } from '../core/models';
-import { errMsg, firstOfMonth, isoDate } from '../core/util';
+import { errMsg, firstOfMonth } from '../core/util';
 import { PagerComponent } from '../shared/pager.component';
 import { ModalComponent } from '../shared/modal.component';
 import { TPipe } from '../core/t.pipe';
@@ -147,7 +147,7 @@ export class SalesListComponent implements OnInit {
   readonly modalError = signal('');
 
   from = firstOfMonth();
-  to = isoDate(new Date());
+  to = '';
   status = '';
 
   isAdmin(): boolean { return this.auth.user()?.role === 'Admin'; }
