@@ -5,6 +5,7 @@ import { PdfService } from '../core/pdf.service';
 import { ReportDoc } from '../core/models';
 import { errMsg, firstOfMonth, isoDate } from '../core/util';
 import { TPipe } from '../core/t.pipe';
+import { PagerComponent } from '../shared/pager.component';
 
 type Kind = 'sales' | 'stock' | 'loans' | 'performance' | 'vat-summary' | 'vat-register'
   | 'credit-outstanding' | 'credit-overdue' | 'credit-collections' | 'credit-penalties';
@@ -13,7 +14,7 @@ type Kind = 'sales' | 'stock' | 'loans' | 'performance' | 'vat-summary' | 'vat-r
 @Component({
   selector: 'app-reports',
   standalone: true,
-  imports: [TPipe, FormsModule],
+  imports: [TPipe, FormsModule, PagerComponent],
   template: `
     <div class="page-head"><h2>{{ 'Reports' | t }}</h2></div>
 
@@ -41,7 +42,7 @@ type Kind = 'sales' | 'stock' | 'loans' | 'performance' | 'vat-summary' | 'vat-r
         <h3>{{ d.title }}</h3>
         <p class="muted">{{ d.subtitle }}</p>
 
-        @for (s of d.sections; track $index) {
+        @for (s of d.sections; track $index; let si = $index) {
           @if (s.heading) { <h4>{{ s.heading }}</h4> }
           <div class="table-wrap">
             <table>
@@ -51,7 +52,7 @@ type Kind = 'sales' | 'stock' | 'loans' | 'performance' | 'vat-summary' | 'vat-r
                 </tr>
               </thead>
               <tbody>
-                @for (row of shown(s.rows); track $index) {
+                @for (row of shown(s.rows, si); track $index) {
                   <tr>
                     @for (cell of row; track $index) { <td [class.num]="s.rightAlign[$index]">{{ cell }}</td> }
                   </tr>
@@ -60,9 +61,7 @@ type Kind = 'sales' | 'stock' | 'loans' | 'performance' | 'vat-summary' | 'vat-r
               </tbody>
             </table>
           </div>
-          @if (s.rows.length > limit) {
-            <p class="muted">{{ 'Showing the first {n} of {total} rows. The PDF has all of them.' | t:{ n: limit, total: s.rows.length } }}</p>
-          }
+          <app-pager [page]="pageOf(si)" [pageSize]="pageSize" [total]="s.rows.length" (pageChange)="setPage(si, $event)"></app-pager>
           @if (s.totals.length > 0) {
             <div class="totals">
               @for (t of s.totals; track $index) { <div><span>{{ t.label }}</span><span>{{ t.value }}</span></div> }
@@ -91,7 +90,8 @@ export class ReportsComponent implements OnInit {
     { kind: 'credit-collections', label: 'Collected payments' },
     { kind: 'credit-penalties', label: 'Penalties' }
   ];
-  readonly limit = 500;
+  readonly pageSize = 25;
+  readonly pages = signal<Record<number, number>>({});
 
   readonly kind = signal<Kind>('sales');
   readonly doc = signal<ReportDoc | null>(null);
@@ -103,7 +103,12 @@ export class ReportsComponent implements OnInit {
 
   ngOnInit(): void { this.load(); }
 
-  shown(rows: string[][]): string[][] { return rows.length > this.limit ? rows.slice(0, this.limit) : rows; }
+  pageOf(section: number): number { return this.pages()[section] ?? 1; }
+  setPage(section: number, page: number): void { this.pages.update(p => ({ ...p, [section]: page })); }
+  shown(rows: string[][], section: number): string[][] {
+    const start = (this.pageOf(section) - 1) * this.pageSize;
+    return rows.slice(start, start + this.pageSize);
+  }
 
   select(k: Kind): void {
     this.kind.set(k);
@@ -121,7 +126,7 @@ export class ReportsComponent implements OnInit {
     this.loading.set(true);
     this.error.set('');
     this.api.report(this.kind(), this.query()).subscribe({
-      next: d => { this.doc.set(d); this.loading.set(false); },
+      next: d => { this.pages.set({}); this.doc.set(d); this.loading.set(false); },
       error: e => { this.error.set(errMsg(e)); this.loading.set(false); }
     });
   }
