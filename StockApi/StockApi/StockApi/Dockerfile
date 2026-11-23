@@ -4,7 +4,8 @@ COPY *.csproj ./
 RUN dotnet restore
 COPY . ./
 # the build must not fail if the Fonts folder was not pushed yet
-RUN mkdir -p /src/Fonts
+# fonts are picked up from the Fonts folder or from the project root
+RUN mkdir -p /src/Fonts && (cp /src/*.ttf /src/Fonts/ 2>/dev/null || true)
 RUN dotnet publish -c Release -o /app --no-restore
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
