@@ -12,7 +12,8 @@ public record CustomerRequest(string FullName, string Phone);
 // WantsReceipt = false -> sold at the price WITHOUT VAT; true -> price WITH VAT (+ receipt).
 // IsLoan = true -> Customer is required; Payments may hold an optional first payment.
 public record SaleRequest(List<SaleItemRequest> Items, bool WantsReceipt, bool IsLoan,
-    CustomerRequest? Customer, List<PaymentRequest>? Payments);
+    CustomerRequest? Customer, List<PaymentRequest>? Payments,
+    string? BuyerName = null, string? BuyerTin = null);
 
 [ApiController]
 [Route("api/sales")]
@@ -47,6 +48,18 @@ public class SalesController(AppDbContext db, SessionService sessions, PaymentSe
                 message = "Not enough stock: " +
                           string.Join("; ", lacking.Select(p => $"{p.Name} (only {p.Quantity} left)"))
             });
+
+        // Optional buyer details printed on the invoice. TIN = 10 digits (spaces and dashes are ignored).
+        string? buyerTin = null;
+        if (!string.IsNullOrWhiteSpace(r.BuyerTin))
+        {
+            var digits = new string(r.BuyerTin.Where(char.IsDigit).ToArray());
+            if (digits.Length != 10 || r.BuyerTin.Any(ch => !char.IsDigit(ch) && ch != ' ' && ch != '-'))
+                return Bad("The buyer TIN must be 10 digits.");
+            buyerTin = digits;
+        }
+        var buyerName = string.IsNullOrWhiteSpace(r.BuyerName) ? null : r.BuyerName.Trim();
+        if (buyerName is { Length: > 150 }) return Bad("The buyer name is too long.");
 
         // Loan needs the customer's name and phone
         string? phone = null;
@@ -129,6 +142,8 @@ public class SalesController(AppDbContext db, SessionService sessions, PaymentSe
             Customer = customer,
             WantsReceipt = r.WantsReceipt,
             IsLoan = r.IsLoan,
+            BuyerName = r.IsLoan ? r.Customer!.FullName.Trim() : buyerName,
+            BuyerTin = buyerTin,
             DueDate = r.IsLoan ? await credit.NewDueDateAsync() : null,
             Subtotal = subtotal,
             VatTotal = vatTotal,
