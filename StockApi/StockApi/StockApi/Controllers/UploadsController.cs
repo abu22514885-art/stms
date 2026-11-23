@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using StockApi.Data;
 using StockApi.Services;
 
@@ -9,7 +10,7 @@ namespace StockApi.Controllers;
 [ApiController]
 [Route("api/uploads")]
 [Authorize]
-public class UploadsController(PaymentService payments) : ControllerBase
+public class UploadsController(PaymentService payments, AppDbContext db) : ControllerBase
 {
     private const long MaxBytes = 5 * 1024 * 1024;
     private static readonly Regex FileName = new(@"^[0-9a-f]{32}\.(jpg|png|webp)$", RegexOptions.Compiled);
@@ -39,10 +40,16 @@ public class UploadsController(PaymentService payments) : ControllerBase
         var relative = $"payment-proofs/{name}";
         try
         {
-            var full = payments.ProofFullPath(relative);
-            Directory.CreateDirectory(Path.GetDirectoryName(full)!);
-            await using (var fs = System.IO.File.Create(full))
-                await file.CopyToAsync(fs);
+            // Kept in the database (Neon), so it is not lost when the server restarts or is redeployed
+            using var ms = new MemoryStream();
+            await file.CopyToAsync(ms);
+            db.UploadedFiles.Add(new UploadedFile
+            {
+                Name = name,
+                ContentType = ext == "png" ? "image/png" : ext == "webp" ? "image/webp" : "image/jpeg",
+                Data = ms.ToArray()
+            });
+            await db.SaveChangesAsync();
             return Ok(new { path = relative });
         }
         catch (Exception ex)
@@ -55,9 +62,14 @@ public class UploadsController(PaymentService payments) : ControllerBase
     // Admin views a screenshot: GET api/uploads/payment-proofs/{file}
     [HttpGet("payment-proofs/{file}")]
     [Authorize(Roles = Roles.Admin)]
-    public IActionResult Get(string file)
+    public async Task<IActionResult> Get(string file)
     {
         if (!FileName.IsMatch(file)) return NotFound();
+
+        var stored = await db.UploadedFiles.AsNoTracking().FirstOrDefaultAsync(f => f.Name == file);
+        if (stored is not null) return File(stored.Data, stored.ContentType);
+
+        // Older screenshots that were saved on the server disk
         var full = payments.ProofFullPath($"payment-proofs/{file}");
         if (!System.IO.File.Exists(full)) return NotFound();
 

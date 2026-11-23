@@ -17,6 +17,13 @@ public class PaymentService(AppDbContext db, IWebHostEnvironment env)
     public string UploadsRoot => Environment.GetEnvironmentVariable("UPLOADS_PATH")
         ?? Path.Combine(env.ContentRootPath, "uploads");
 
+    // The screenshot is in the database (new uploads) or on the server disk (older ones)
+    private async Task<bool> ProofExistsAsync(string relative)
+    {
+        var name = relative.Substring(relative.LastIndexOf('/') + 1);
+        return await db.UploadedFiles.AnyAsync(f => f.Name == name) || File.Exists(ProofFullPath(relative));
+    }
+
     public string ProofFullPath(string relative) =>
         Path.Combine(UploadsRoot, relative.Replace('/', Path.DirectorySeparatorChar));
 
@@ -41,8 +48,12 @@ public class PaymentService(AppDbContext db, IWebHostEnvironment env)
 
             var pay = new Payment
             {
-                Id = Guid.NewGuid(), PaymentMethodId = method.Id, Amount = amount,
-                ReceivedBy = userId, PaidAt = DateTime.UtcNow, IsLoanRepayment = isRepayment
+                Id = Guid.NewGuid(),
+                PaymentMethodId = method.Id,
+                Amount = amount,
+                ReceivedBy = userId,
+                PaidAt = DateTime.UtcNow,
+                IsLoanRepayment = isRepayment
             };
 
             if (method.Type != "Cash")
@@ -56,7 +67,7 @@ public class PaymentService(AppDbContext db, IWebHostEnvironment env)
                 if (txRef.Length > 100) return (null, "Transaction reference ID is too long.");
 
                 var image = r.ReceiptImagePath?.Trim();
-                if (string.IsNullOrEmpty(image) || !ProofPath.IsMatch(image) || !File.Exists(ProofFullPath(image)))
+                if (string.IsNullOrEmpty(image) || !ProofPath.IsMatch(image) || !await ProofExistsAsync(image))
                     return (null, "Upload the receipt screenshot for this payment.");
 
                 if (!refsInRequest.Add($"{provider.Id}:{txRef}") || !imagesInRequest.Add(image))

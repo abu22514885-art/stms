@@ -17,6 +17,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Sale> Sales => Set<Sale>();
     public DbSet<SaleItem> SaleItems => Set<SaleItem>();
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<UploadedFile> UploadedFiles => Set<UploadedFile>();
     public DbSet<LoanPenalty> LoanPenalties => Set<LoanPenalty>();
     public DbSet<LoanReminder> LoanReminders => Set<LoanReminder>();
     public DbSet<PasswordResetRequest> PasswordResetRequests => Set<PasswordResetRequest>();
