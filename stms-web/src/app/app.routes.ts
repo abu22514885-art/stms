@@ -11,6 +11,7 @@ import { LoansComponent } from './pages/loans.component';
 import { ReportsComponent } from './pages/reports.component';
 import { UsersComponent } from './pages/users.component';
 import { SettingsComponent } from './pages/settings.component';
+import { AccountComponent } from './pages/account.component';
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -28,6 +29,7 @@ export const routes: Routes = [
       { path: 'reports', component: ReportsComponent, canActivate: [adminGuard] },
       { path: 'users', component: UsersComponent, canActivate: [adminGuard] },
       { path: 'settings', component: SettingsComponent, canActivate: [adminGuard] },
+      { path: 'account', component: AccountComponent },
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' }
     ]
   },

@@ -9,6 +9,7 @@ import { Product } from '../core/models';
 import { errMsg, r2 } from '../core/util';
 import { PagerComponent } from '../shared/pager.component';
 import { ModalComponent } from '../shared/modal.component';
+import { NumInputDirective } from '../core/num-input.directive';
 import { TPipe } from '../core/t.pipe';
 
 type StatusFilter = 'all' | 'Yellow' | 'Red';
@@ -16,7 +17,7 @@ type StatusFilter = 'all' | 'Yellow' | 'Red';
 @Component({
   selector: 'app-products',
   standalone: true,
-  imports: [TPipe, FormsModule, DecimalPipe, ModalComponent, PagerComponent],
+  imports: [TPipe, FormsModule, DecimalPipe, ModalComponent, PagerComponent, NumInputDirective],
   template: `
     <div class="page-head">
       <h2>{{ 'Products' | t }}</h2>
@@ -81,17 +82,17 @@ type StatusFilter = 'all' | 'Yellow' | 'Red';
         </div>
         <div class="field"><label>{{ 'Name' | t }}</label><input type="text" [(ngModel)]="form.name"></div>
         @if (auth.isAdmin()) {
-          <div class="field"><label>{{ 'Cost price (what you paid)' | t }}</label><input type="number" min="0" step="0.01" [(ngModel)]="form.cost"></div>
+          <div class="field"><label>{{ 'Cost price (what you paid)' | t }}</label><input type="text" appNum [(ngModel)]="form.cost"></div>
         }
         <div class="field">
           <label>{{ 'Selling price (before VAT)' | t }}</label>
-          <input type="number" min="0" step="0.01" [(ngModel)]="form.price">
+          <input type="text" appNum [(ngModel)]="form.price">
           @if (form.price !== null && form.price >= 0) {
             <small class="muted">{{ 'VAT {p}% = {v}, price with VAT = {w}' | t:{ p: vatPercent, v: ((previewVat() | number:'1.2-2') ?? '0.00'), w: ((previewWithVat() | number:'1.2-2') ?? '0.00') } }}</small>
           }
         </div>
         @if (!editing()) {
-          <div class="field"><label>{{ 'Quantity in stock' | t }}</label><input type="number" min="0" step="1" [(ngModel)]="form.quantity"></div>
+          <div class="field"><label>{{ 'Quantity in stock' | t }}</label><input type="text" appNum decimals="0" [(ngModel)]="form.quantity"></div>
         }
         @if (formError()) { <div class="alert error">{{ formError() | t }}</div> }
         <div class="modal-actions">
@@ -105,10 +106,10 @@ type StatusFilter = 'all' | 'Yellow' | 'Red';
       <app-modal [title]="((s.mode === 'restock' ? 'Restock' : 'Adjust stock') | t) + ': ' + s.product.name" [width]="440" (closed)="stock.set(null)">
         <p class="muted">{{ 'Now in stock: {n}' | t:{ n: s.product.quantity } }}</p>
         @if (s.mode === 'restock') {
-          <div class="field"><label>{{ 'Quantity to add' | t }}</label><input type="number" min="1" step="1" [(ngModel)]="stockQty"></div>
+          <div class="field"><label>{{ 'Quantity to add' | t }}</label><input type="text" appNum decimals="0" [(ngModel)]="stockQty"></div>
           <p class="muted">{{ 'After a restock, the low-stock alert counts from the new total.' | t }}</p>
         } @else {
-          <div class="field"><label>{{ 'Change (use a minus for removing, e.g. -3)' | t }}</label><input type="number" step="1" [(ngModel)]="stockQty"></div>
+          <div class="field"><label>{{ 'Change (use a minus for removing, e.g. -3)' | t }}</label><input type="text" appNum decimals="0" allowNegative [(ngModel)]="stockQty"></div>
           <div class="field">
             <label>{{ 'Reason' | t }}</label>
             <select [(ngModel)]="stockReason">

@@ -83,6 +83,21 @@ export class ApiService {
   sales(filter: { from?: string; to?: string; status?: string; salespersonId?: string; isLoan?: boolean; page: number; pageSize: number }): Observable<Paged<SaleSummary>> {
     return this.http.get<Paged<SaleSummary>>(this.url('/api/sales'), { params: params(filter) });
   }
+  accountMe(): Observable<{ id: string; fullName: string; username: string; role: string }> {
+    return this.http.get<{ id: string; fullName: string; username: string; role: string }>(this.url('/api/account/me'));
+  }
+  changeUsername(newUsername: string, currentPassword: string): Observable<{ username: string }> {
+    return this.http.put<{ username: string }>(this.url('/api/account/username'), { newUsername, currentPassword });
+  }
+  changePassword(currentPassword: string, newPassword: string): Observable<unknown> {
+    return this.http.post(this.url('/api/account/password'), { currentPassword, newPassword });
+  }
+  getPreferences(): Observable<Record<string, string | null>> {
+    return this.http.get<Record<string, string | null>>(this.url('/api/account/preferences'));
+  }
+  savePreferences(p: { mode: string; accent: string; font: string; size: string }): Observable<unknown> {
+    return this.http.put(this.url('/api/account/preferences'), p);
+  }
   sale(id: string): Observable<Sale> { return this.http.get<Sale>(this.url(`/api/sales/${id}`)); }
   receiptPdf(id: string): Observable<Blob> {
     return this.http.get(this.url(`/api/sales/${id}/receipt`), { responseType: 'blob' });

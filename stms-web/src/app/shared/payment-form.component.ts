@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../core/api.service';
 import { PaymentDraft, PaymentMethod, Provider } from '../core/models';
 import { errMsg, r2 } from '../core/util';
+import { NumInputDirective } from '../core/num-input.directive';
 import { TPipe } from '../core/t.pipe';
 
 // How the customer paid. Cash needs nothing more. Bank or wallet needs the bank/wallet,
@@ -10,7 +11,7 @@ import { TPipe } from '../core/t.pipe';
 @Component({
   selector: 'app-payment-form',
   standalone: true,
-  imports: [TPipe, FormsModule],
+  imports: [TPipe, FormsModule, NumInputDirective],
   template: `
     <div class="field">
       <label>{{ 'Payment method' | t }}</label>
@@ -52,7 +53,7 @@ import { TPipe } from '../core/t.pipe';
     @if (editable) {
       <div class="field">
         <label>{{ 'Amount paid' | t }}</label>
-        <input type="number" min="0" step="0.01" [ngModel]="amountValue" (ngModelChange)="onAmount($event)">
+        <input type="text" appNum [ngModel]="amountValue" (ngModelChange)="onAmount($event)">
       </div>
     }
   `

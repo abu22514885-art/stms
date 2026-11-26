@@ -9,6 +9,7 @@ import { errMsg, r2 } from '../core/util';
 import { PagerComponent } from '../shared/pager.component';
 import { PaymentSuccessComponent } from '../shared/payment-success.component';
 import { PaymentFormComponent } from '../shared/payment-form.component';
+import { NumInputDirective } from '../core/num-input.directive';
 import { TPipe } from '../core/t.pipe';
 
 interface CartLine { product: Product; qty: number; }
@@ -16,7 +17,7 @@ interface CartLine { product: Product; qty: number; }
 @Component({
   selector: 'app-sell',
   standalone: true,
-  imports: [TPipe, FormsModule, DecimalPipe, PaymentSuccessComponent, PaymentFormComponent, PagerComponent],
+  imports: [TPipe, FormsModule, DecimalPipe, PaymentSuccessComponent, PaymentFormComponent, PagerComponent, NumInputDirective],
   template: `
     <div class="page-head"><h2>{{ 'New sale' | t }}</h2></div>
     @if (error()) { <div class="alert error">{{ error() | t }}</div> }
@@ -54,7 +55,7 @@ interface CartLine { product: Product; qty: number; }
             </div>
             <div class="qty">
               <button type="button" class="icon-btn" (click)="setQty(l, l.qty - 1)" [aria-label]="'Less' | t">&minus;</button>
-              <input type="number" min="1" [max]="l.product.quantity" [ngModel]="l.qty" (ngModelChange)="setQty(l, $event)">
+              <input type="text" appNum decimals="0" [ngModel]="l.qty" (ngModelChange)="setQty(l, $event)">
               <button type="button" class="icon-btn" (click)="setQty(l, l.qty + 1)" [aria-label]="'More' | t">+</button>
             </div>
             <div class="cl-total">{{ l.qty * unitPrice(l.product) | number:'1.2-2' }}</div>

@@ -48,10 +48,10 @@ interface MenuItem { path: string; label: string; icon: string; }
             @if (push.feedback()) { <span class="push-feedback">{{ push.feedback() | t }}</span> }
           </div>
           <app-notification-bell></app-notification-bell>
-          <div class="who">
+          <a class="who" routerLink="/account" [title]="'My account' | t" style="text-decoration:none;color:inherit">
             <strong>{{ auth.user()?.fullName }}</strong>
             <span class="role">{{ auth.user()?.role }}</span>
-          </div>
+          </a>
           <button type="button" class="btn ghost logout-btn" (click)="auth.logout()"><ng-icon name="lucideLogOut" size="17"></ng-icon>{{ 'Log out' | t }}</button>
         </header>
         <main class="content">

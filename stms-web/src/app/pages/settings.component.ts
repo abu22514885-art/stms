@@ -4,17 +4,20 @@ import { ApiService } from '../core/api.service';
 import { PaymentMethod, Provider } from '../core/models';
 import { errMsg } from '../core/util';
 import { TPipe } from '../core/t.pipe';
+import { AppearanceComponent } from '../shared/appearance.component';
 
 // Admin settings: company details on receipts, and the banks / wallets people can pay with.
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [TPipe, FormsModule],
+  imports: [TPipe, FormsModule, AppearanceComponent],
   template: `
     <div class="page-head"><h2>{{ 'Settings' | t }}</h2></div>
 
     @if (error()) { <div class="alert error">{{ error() | t }}</div> }
     @if (message()) { <div class="alert success">{{ message() | t }}</div> }
+
+    <app-appearance></app-appearance>
 
     <div class="card">
       <h3>{{ 'Company details' | t }}</h3>
